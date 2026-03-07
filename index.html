@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ל משימות</title>
+
+<title>לוח משימות</title>
 
 <style>
 
@@ -74,11 +75,6 @@ font-size:12px;
 cursor:pointer;
 }
 
-.done{
-text-decoration:line-through;
-opacity:0.5;
-}
-
 .taskMenu{
 position:absolute;
 background:white;
@@ -87,17 +83,6 @@ box-shadow:0 2px 10px rgba(0,0,0,0.2);
 padding:6px;
 display:none;
 flex-direction:column;
-}
-
-.menuHeader{
-display:flex;
-justify-content:space-between;
-font-size:12px;
-margin-bottom:4px;
-}
-
-.closeMenu{
-cursor:pointer;
 }
 
 .taskMenu button{
@@ -172,16 +157,9 @@ padding:5px;
 </div>
 
 <div id="taskMenu" class="taskMenu">
-
-<div class="menuHeader">
-פעולות
-<span class="closeMenu" onclick="hideMenu()">✖</span>
-</div>
-
 <button onclick="editTask()">ערוך</button>
 <button onclick="duplicateTask()">שכפל</button>
 <button onclick="deleteTask()">מחק</button>
-
 </div>
 
 <div class="modal" id="modal">
@@ -231,10 +209,8 @@ function save(){
 localStorage.setItem("tasks",JSON.stringify(tasks));
 }
 
-function getWeekNumber(date){
-let first=new Date(date.getFullYear(),0,1);
-let past=(date-first)/86400000;
-return Math.ceil((past+first.getDay()+1)/7);
+function formatDate(d){
+return d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0")+"-"+d.getDate().toString().padStart(2,"0");
 }
 
 function createTimes(){
@@ -265,54 +241,32 @@ if(view==="day")current.setDate(current.getDate()+1);
 render();
 }
 
-function showMenu(e,i){
-menuIndex=i;
-taskMenu.style.display="flex";
-taskMenu.style.left=e.pageX+"px";
-taskMenu.style.top=e.pageY+"px";
-}
-
-function hideMenu(){
-taskMenu.style.display="none";
-}
-
-function deleteTask(){
-tasks.splice(menuIndex,1);
-save();
-hideMenu();
-render();
-}
-
-function duplicateTask(){
-tasks.push({...tasks[menuIndex]});
-save();
-hideMenu();
-render();
-}
-
-function editTask(){
-openModal(tasks[menuIndex].date,menuIndex);
-hideMenu();
-}
-
 function openModal(date=null,index=null){
-selectedDate=date;
+
+selectedDate=date || formatDate(new Date());
 editIndex=index;
+
 modal.style.display="flex";
 
 if(index!=null){
+
 let t=tasks[index];
+
 text.value=t.text;
 start.value=t.start;
 end.value=t.end;
 color.value=t.color;
+
 }
+
 }
 
 function closeModal(){
+
 modal.style.display="none";
 text.value="";
 editIndex=null;
+
 }
 
 function saveTask(){
@@ -342,16 +296,16 @@ function render(){
 
 calendar.innerHTML="";
 
-let todayStr=new Date().toISOString().split("T")[0];
+let today=formatDate(new Date());
 
 if(view==="month"){
 
 calendar.className="calendar month";
 
-title.innerText="לוח משימות — "+months[current.getMonth()]+" ("+(current.getMonth()+1)+")";
-
 let y=current.getFullYear();
 let m=current.getMonth();
+
+title.innerText="לוח משימות — "+months[m]+" ("+(m+1)+")";
 
 let first=new Date(y,m,1).getDay();
 let daysInMonth=new Date(y,m+1,0).getDate();
@@ -362,7 +316,7 @@ for(let d=1;d<=daysInMonth;d++){
 
 let date=new Date(y,m,d);
 
-renderDay(date,todayStr);
+renderDay(date,today);
 
 }
 
@@ -378,14 +332,14 @@ start.setDate(current.getDate()-current.getDay());
 let end=new Date(start);
 end.setDate(start.getDate()+6);
 
-title.innerText="לוח משימות — שבוע "+getWeekNumber(current)+" | "+start.getDate()+"–"+end.getDate()+" "+months[start.getMonth()];
+title.innerText="שבוע "+getWeekNumber(current)+" | "+start.getDate()+"-"+end.getDate()+" "+months[start.getMonth()];
 
 for(let i=0;i<7;i++){
 
 let d=new Date(start);
 d.setDate(start.getDate()+i);
 
-renderDay(d,todayStr);
+renderDay(d,today);
 
 }
 
@@ -395,9 +349,9 @@ if(view==="day"){
 
 calendar.className="calendar day";
 
-title.innerText="לוח משימות — "+days[current.getDay()]+" | "+current.getDate()+" "+months[current.getMonth()];
+title.innerText=days[current.getDay()]+" "+current.getDate()+" "+months[current.getMonth()];
 
-renderDay(current,todayStr);
+renderDay(current,today);
 
 }
 
@@ -405,14 +359,14 @@ renderToday();
 
 }
 
-function renderDay(date,todayStr){
+function renderDay(date,today){
 
-let dateStr=date.toISOString().split("T")[0];
+let dateStr=formatDate(date);
 
 let box=document.createElement("div");
 box.className="dayBox";
 
-if(dateStr===todayStr)box.classList.add("todayHighlight");
+if(dateStr===today)box.classList.add("todayHighlight");
 
 box.onclick=()=>openModal(dateStr);
 
@@ -430,27 +384,10 @@ let task=document.createElement("div");
 task.className="task";
 task.style.background=t.color;
 
-let cb=document.createElement("input");
-cb.type="checkbox";
-cb.checked=t.done;
-
-cb.onclick=e=>{
-e.stopPropagation();
-t.done=!t.done;
-save();
-render();
-};
-
 let span=document.createElement("span");
 span.innerText=t.start+" "+t.text;
 
-task.appendChild(cb);
 task.appendChild(span);
-
-task.onclick=e=>{
-e.stopPropagation();
-showMenu(e,i);
-};
 
 box.appendChild(task);
 
@@ -462,7 +399,7 @@ calendar.appendChild(box);
 
 function renderToday(){
 
-let today=new Date().toISOString().split("T")[0];
+let today=formatDate(new Date());
 
 todayTasks.innerHTML="";
 
@@ -479,19 +416,14 @@ todayTasks.appendChild(d);
 
 }
 
-document.addEventListener("click",function(e){
-
-if(!e.target.closest(".taskMenu")) hideMenu();
-
-if(!e.target.closest(".modalBox")) closeModal();
-
-});
+function getWeekNumber(d){
+let first=new Date(d.getFullYear(),0,1);
+return Math.ceil((((d-first)/86400000)+first.getDay()+1)/7);
+}
 
 createTimes();
 render();
 
 </script>
-
 </body>
 </html>
-
