@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>לוח משימות</title>
+<title>לוח משימות חודשי</title>
 
 <style>
 
@@ -15,8 +15,22 @@ margin:0;
 padding:20px;
 }
 
-h1{
-text-align:center;
+h1{text-align:center;}
+
+.controls{
+display:flex;
+justify-content:center;
+gap:10px;
+margin-bottom:20px;
+}
+
+button{
+padding:6px 10px;
+border:none;
+background:#4CAF50;
+color:white;
+border-radius:5px;
+cursor:pointer;
 }
 
 .add{
@@ -26,20 +40,12 @@ border-radius:10px;
 margin-bottom:20px;
 }
 
-input,select,button{
-padding:8px;
+input,select{
+padding:6px;
 margin:5px;
 }
 
-button{
-background:#4CAF50;
-color:white;
-border:none;
-border-radius:5px;
-cursor:pointer;
-}
-
-.board{
+.calendar{
 display:grid;
 grid-template-columns:repeat(7,1fr);
 gap:10px;
@@ -48,31 +54,44 @@ gap:10px;
 .day{
 background:white;
 border-radius:10px;
-padding:10px;
-min-height:200px;
+padding:5px;
+min-height:120px;
 }
 
-.day h3{
-margin-top:0;
-font-size:16px;
-text-align:center;
+.date{
+font-weight:bold;
+font-size:14px;
 }
 
 .task{
 background:#eee;
-padding:6px;
-margin-top:5px;
+padding:4px;
+margin-top:4px;
 border-radius:5px;
+font-size:12px;
 cursor:grab;
 }
 
-.high{border-right:6px solid red;}
-.medium{border-right:6px solid orange;}
-.low{border-right:6px solid green;}
+.high{border-right:5px solid red;}
+.medium{border-right:5px solid orange;}
+.low{border-right:5px solid green;}
 
 .done{
 text-decoration:line-through;
 opacity:0.5;
+}
+
+.taskButtons{
+display:flex;
+gap:4px;
+margin-top:3px;
+}
+
+.taskButtons button{
+background:#ddd;
+color:black;
+padding:2px 5px;
+font-size:11px;
 }
 
 </style>
@@ -80,21 +99,21 @@ opacity:0.5;
 
 <body>
 
-<h1>📅 לוח משימות שבועי</h1>
+<h1>📅 לוח משימות חודשי</h1>
+
+<div class="controls">
+
+<button onclick="prevMonth()">⬅</button>
+<div id="monthLabel"></div>
+<button onclick="nextMonth()">➡</button>
+
+</div>
 
 <div class="add">
 
 <input id="text" placeholder="משימה">
 
-<select id="day">
-<option value="Sunday">ראשון</option>
-<option value="Monday">שני</option>
-<option value="Tuesday">שלישי</option>
-<option value="Wednesday">רביעי</option>
-<option value="Thursday">חמישי</option>
-<option value="Friday">שישי</option>
-<option value="Saturday">שבת</option>
-</select>
+<input type="date" id="date">
 
 <select id="time"></select>
 
@@ -108,19 +127,20 @@ opacity:0.5;
 
 </div>
 
-<div class="board" id="board"></div>
+<div class="calendar" id="calendar"></div>
 
 <script>
 
-const days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-
 let tasks=JSON.parse(localStorage.getItem("tasks"))||[];
+
+let current=new Date();
 
 function save(){
 localStorage.setItem("tasks",JSON.stringify(tasks));
 }
 
-function createTimeOptions(){
+function createTimes(){
+
 let select=document.getElementById("time");
 
 for(let h=0;h<24;h++){
@@ -137,73 +157,116 @@ select.appendChild(opt);
 
 }
 }
+
 }
 
 function addTask(){
 
 let text=document.getElementById("text").value;
-let day=document.getElementById("day").value;
+let date=document.getElementById("date").value;
 let time=document.getElementById("time").value;
 let priority=document.getElementById("priority").value;
 
-if(!text)return;
+if(!text || !date)return;
 
 tasks.push({
-text,
-day,
-time,
-priority,
-done:false
+text,date,time,priority,done:false
 });
 
 save();
 render();
 
-text.value="";
+}
+
+function editTask(i){
+
+let newText=prompt("ערוך משימה",tasks[i].text);
+
+if(newText){
+
+tasks[i].text=newText;
+
+save();
+render();
+
+}
+
+}
+
+function duplicateTask(i){
+
+let copy={...tasks[i]};
+
+tasks.push(copy);
+
+save();
+render();
 
 }
 
 function render(){
 
-let board=document.getElementById("board");
-board.innerHTML="";
+let cal=document.getElementById("calendar");
+cal.innerHTML="";
 
-days.forEach(day=>{
+let year=current.getFullYear();
+let month=current.getMonth();
 
-let div=document.createElement("div");
-div.className="day";
-div.dataset.day=day;
+document.getElementById("monthLabel").innerText=
+current.toLocaleDateString("he-IL",{month:"long",year:"numeric"});
 
-div.ondragover=e=>e.preventDefault();
+let firstDay=new Date(year,month,1).getDay();
+let daysInMonth=new Date(year,month+1,0).getDate();
 
-div.ondrop=e=>{
+for(let i=0;i<firstDay;i++){
+
+let empty=document.createElement("div");
+cal.appendChild(empty);
+
+}
+
+for(let d=1;d<=daysInMonth;d++){
+
+let dateStr=year+"-"+String(month+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+
+let day=document.createElement("div");
+day.className="day";
+
+day.ondragover=e=>e.preventDefault();
+
+day.ondrop=e=>{
+
 let id=e.dataTransfer.getData("id");
-tasks[id].day=day;
+
+tasks[id].date=dateStr;
+
 save();
 render();
+
 };
 
-let title=document.createElement("h3");
-title.innerText=day;
+let date=document.createElement("div");
+date.className="date";
+date.innerText=d;
 
-div.appendChild(title);
+day.appendChild(date);
 
 tasks.forEach((task,i)=>{
 
-if(task.day!==day)return;
+if(task.date!==dateStr)return;
 
 let t=document.createElement("div");
 t.className="task "+task.priority;
 
-if(task.done) t.classList.add("done");
-
-t.innerText=task.time+" "+task.text;
+if(task.done)t.classList.add("done");
 
 t.draggable=true;
 
 t.ondragstart=e=>{
 e.dataTransfer.setData("id",i);
 };
+
+t.innerText=task.time+" "+task.text;
 
 t.onclick=()=>{
 
@@ -214,17 +277,47 @@ render();
 
 };
 
-div.appendChild(t);
+let btns=document.createElement("div");
+btns.className="taskButtons";
+
+let edit=document.createElement("button");
+edit.innerText="✏";
+edit.onclick=()=>editTask(i);
+
+let dup=document.createElement("button");
+dup.innerText="📑";
+dup.onclick=()=>duplicateTask(i);
+
+btns.appendChild(edit);
+btns.appendChild(dup);
+
+t.appendChild(btns);
+
+day.appendChild(t);
 
 });
 
-board.appendChild(div);
-
-});
+cal.appendChild(day);
 
 }
 
-createTimeOptions();
+}
+
+function prevMonth(){
+
+current.setMonth(current.getMonth()-1);
+render();
+
+}
+
+function nextMonth(){
+
+current.setMonth(current.getMonth()+1);
+render();
+
+}
+
+createTimes();
 render();
 
 </script>
