@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>לוח </title>
+<title>לוח משימות</title>
 
 <style>
 
@@ -71,7 +71,39 @@ padding:4px;
 margin-top:4px;
 border-radius:5px;
 font-size:12px;
-cursor:pointer;
+cursor:grab;
+}
+
+.priorityHigh{border-right:4px solid red}
+.priorityMed{border-right:4px solid orange}
+.priorityLow{border-right:4px solid green}
+
+.taskMenu{
+position:absolute;
+background:white;
+border-radius:8px;
+box-shadow:0 2px 10px rgba(0,0,0,0.2);
+padding:6px;
+display:none;
+flex-direction:column;
+}
+
+.taskMenu button{
+background:#eee;
+color:black;
+margin-bottom:4px;
+}
+
+.today{
+position:fixed;
+top:10px;
+right:10px;
+background:white;
+padding:10px;
+border-radius:10px;
+width:200px;
+box-shadow:0 2px 8px rgba(0,0,0,0.2);
+font-size:12px;
 }
 
 .modal{
@@ -98,18 +130,6 @@ width:260px;
 width:100%;
 margin-bottom:6px;
 padding:5px;
-}
-
-.today{
-position:fixed;
-top:10px;
-right:10px;
-background:white;
-padding:10px;
-border-radius:10px;
-width:200px;
-box-shadow:0 2px 8px rgba(0,0,0,0.2);
-font-size:12px;
 }
 
 </style>
@@ -139,6 +159,12 @@ font-size:12px;
 <div id="todayTasks"></div>
 </div>
 
+<div id="taskMenu" class="taskMenu">
+<button onclick="editTask()">ערוך</button>
+<button onclick="duplicateTask()">שכפל</button>
+<button onclick="deleteTask()">מחק</button>
+</div>
+
 <div class="modal" id="modal">
 
 <div class="modalBox">
@@ -150,6 +176,13 @@ font-size:12px;
 
 <label>שעת סיום</label>
 <select id="end"></select>
+
+<label>עדיפות</label>
+<select id="priority">
+<option value="high">גבוהה</option>
+<option value="med">בינונית</option>
+<option value="low">נמוכה</option>
+</select>
 
 <label>צבע</label>
 <select id="color">
@@ -164,10 +197,8 @@ font-size:12px;
 </select>
 
 <button onclick="saveTask()">שמור</button>
-<button onclick="closeModal()">ביטול</button>
 
 </div>
-
 </div>
 
 <script>
@@ -177,6 +208,8 @@ let tasks=JSON.parse(localStorage.getItem("tasks"))||[];
 let current=new Date();
 let view="month";
 let selectedDate=null;
+let editIndex=null;
+let menuIndex=null;
 
 const days=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
 const months=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
@@ -186,10 +219,7 @@ localStorage.setItem("tasks",JSON.stringify(tasks));
 }
 
 function formatDate(d){
-let y=d.getFullYear();
-let m=(d.getMonth()+1).toString().padStart(2,"0");
-let day=d.getDate().toString().padStart(2,"0");
-return y+"-"+m+"-"+day;
+return d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0")+"-"+d.getDate().toString().padStart(2,"0");
 }
 
 function createTimes(){
@@ -201,58 +231,83 @@ end.add(new Option(t,t));
 }}
 }
 
-function openModal(date=null){
+function openModal(date=null,index=null){
 
 selectedDate=date || formatDate(new Date());
+editIndex=index;
 
 modal.style.display="flex";
 
+if(index!=null){
+
+let t=tasks[index];
+
+text.value=t.text;
+start.value=t.start;
+end.value=t.end;
+priority.value=t.priority;
+color.value=t.color;
+
 }
-
-function closeModal(){
-
-modal.style.display="none";
-text.value="";
 
 }
 
 function saveTask(){
 
-if(!selectedDate)return;
-
 let task={
 text:text.value,
 start:start.value,
 end:end.value,
+priority:priority.value,
 color:color.value,
 date:selectedDate
 };
 
+if(editIndex!=null){
+tasks[editIndex]=task;
+}else{
 tasks.push(task);
+}
 
 save();
-closeModal();
+modal.style.display="none";
 render();
 
 }
 
-function setView(v){
-view=v;
-render();
+function showMenu(e,i){
+
+menuIndex=i;
+
+taskMenu.style.display="flex";
+taskMenu.style.left=e.pageX+"px";
+taskMenu.style.top=e.pageY+"px";
+
 }
 
-function prev(){
-if(view==="month")current.setMonth(current.getMonth()-1);
-if(view==="week")current.setDate(current.getDate()-7);
-if(view==="day")current.setDate(current.getDate()-1);
+function deleteTask(){
+
+tasks.splice(menuIndex,1);
+save();
+taskMenu.style.display="none";
 render();
+
 }
 
-function next(){
-if(view==="month")current.setMonth(current.getMonth()+1);
-if(view==="week")current.setDate(current.getDate()+7);
-if(view==="day")current.setDate(current.getDate()+1);
+function duplicateTask(){
+
+tasks.push({...tasks[menuIndex]});
+save();
+taskMenu.style.display="none";
 render();
+
+}
+
+function editTask(){
+
+openModal(tasks[menuIndex].date,menuIndex);
+taskMenu.style.display="none";
+
 }
 
 function render(){
@@ -277,9 +332,7 @@ for(let i=0;i<first;i++)calendar.appendChild(document.createElement("div"));
 
 for(let d=1;d<=daysInMonth;d++){
 
-let date=new Date(y,m,d);
-
-renderDay(date,today);
+renderDay(new Date(y,m,d),today);
 
 }
 
@@ -314,7 +367,7 @@ calendar.className="calendar day";
 
 title.innerText=days[current.getDay()]+" "+current.getDate()+" "+months[current.getMonth()];
 
-renderDay(current,today);
+renderDay(current,null);
 
 }
 
@@ -329,9 +382,18 @@ let dateStr=formatDate(date);
 let box=document.createElement("div");
 box.className="dayBox";
 
-if(dateStr===today)box.classList.add("todayHighlight");
+if(today && dateStr===today)box.classList.add("todayHighlight");
 
 box.onclick=()=>openModal(dateStr);
+
+box.ondragover=e=>e.preventDefault();
+
+box.ondrop=e=>{
+let id=e.dataTransfer.getData("task");
+tasks[id].date=dateStr;
+save();
+render();
+};
 
 let header=document.createElement("div");
 header.className="date";
@@ -339,14 +401,27 @@ header.innerText=days[date.getDay()]+" "+date.getDate();
 
 box.appendChild(header);
 
-tasks.forEach(t=>{
+tasks.forEach((t,i)=>{
 
 if(t.date!==dateStr)return;
 
 let task=document.createElement("div");
-task.className="task";
+task.className="task "+(t.priority==="high"?"priorityHigh":t.priority==="med"?"priorityMed":"priorityLow");
+
 task.style.background=t.color;
+
+task.draggable=true;
+
+task.ondragstart=e=>{
+e.dataTransfer.setData("task",i);
+};
+
 task.innerText=t.start+" "+t.text;
+
+task.onclick=e=>{
+e.stopPropagation();
+showMenu(e,i);
+};
 
 box.appendChild(task);
 
@@ -380,10 +455,17 @@ let first=new Date(d.getFullYear(),0,1);
 return Math.ceil((((d-first)/86400000)+first.getDay()+1)/7);
 }
 
+document.addEventListener("click",function(e){
+
+if(!e.target.closest(".taskMenu"))taskMenu.style.display="none";
+
+if(!e.target.closest(".modalBox"))modal.style.display="none";
+
+});
+
 createTimes();
 render();
 
 </script>
 </body>
 </html>
-
