@@ -12,16 +12,17 @@ font-family:Arial;
 direction:rtl;
 background:#f2f4f8;
 margin:0;
-padding:20px;
+padding:15px;
 }
 
 h1{text-align:center}
 
 .controls{
 display:flex;
+flex-wrap:wrap;
 justify-content:center;
-gap:10px;
-margin-bottom:20px;
+gap:8px;
+margin-bottom:15px;
 }
 
 button{
@@ -35,15 +36,26 @@ cursor:pointer;
 
 .calendar{
 display:grid;
+gap:8px;
+}
+
+.month{
 grid-template-columns:repeat(7,1fr);
-gap:10px;
+}
+
+.week{
+grid-template-columns:repeat(7,1fr);
+}
+
+.dayView{
+grid-template-columns:1fr;
 }
 
 .day{
 background:white;
 border-radius:10px;
 padding:6px;
-min-height:120px;
+min-height:110px;
 }
 
 .date{
@@ -52,17 +64,13 @@ margin-bottom:4px;
 }
 
 .task{
-background:#eee;
 padding:4px;
 margin-top:4px;
 border-radius:5px;
 font-size:12px;
 cursor:grab;
+background:#eee;
 }
-
-.high{border-right:5px solid red;}
-.medium{border-right:5px solid orange;}
-.low{border-right:5px solid green;}
 
 .done{
 text-decoration:line-through;
@@ -71,7 +79,7 @@ opacity:0.5;
 
 .taskBtns{
 display:flex;
-gap:4px;
+gap:3px;
 margin-top:2px;
 }
 
@@ -92,27 +100,36 @@ font-size:10px;
 
 <div class="controls">
 
-<button onclick="prevMonth()">⬅</button>
-<div id="monthLabel"></div>
-<button onclick="nextMonth()">➡</button>
+<button onclick="prev()">⬅</button>
+<div id="label"></div>
+<button onclick="next()">➡</button>
+
+<button onclick="setView('month')">חודש</button>
+<button onclick="setView('week')">שבוע</button>
+<button onclick="setView('day')">יום</button>
 
 <select id="time"></select>
 
 <select id="priority">
-<option value="high">גבוהה</option>
-<option value="medium">בינונית</option>
-<option value="low">נמוכה</option>
+<option>גבוהה</option>
+<option>בינונית</option>
+<option>נמוכה</option>
 </select>
+
+<input type="color" id="color" value="#eeeeee">
+
+<button onclick="addTaskManual()">➕ משימה</button>
 
 </div>
 
-<div class="calendar" id="calendar"></div>
+<div id="calendar" class="calendar"></div>
 
 <script>
 
 let tasks=JSON.parse(localStorage.getItem("tasks"))||[];
 
 let current=new Date();
+let view="month";
 
 function save(){
 localStorage.setItem("tasks",JSON.stringify(tasks));
@@ -139,22 +156,67 @@ select.appendChild(opt);
 
 }
 
+function setView(v){
+
+view=v;
+render();
+
+}
+
+function prev(){
+
+if(view==="month") current.setMonth(current.getMonth()-1);
+if(view==="week") current.setDate(current.getDate()-7);
+if(view==="day") current.setDate(current.getDate()-1);
+
+render();
+
+}
+
+function next(){
+
+if(view==="month") current.setMonth(current.getMonth()+1);
+if(view==="week") current.setDate(current.getDate()+7);
+if(view==="day") current.setDate(current.getDate()+1);
+
+render();
+
+}
+
 function addTask(date){
 
-let text=prompt("משימה חדשה");
+let text=prompt("משימה");
 
 if(!text)return;
 
 let time=document.getElementById("time").value;
-let priority=document.getElementById("priority").value;
+let color=document.getElementById("color").value;
 
-tasks.push({
-text,
-date,
-time,
-priority,
-done:false
-});
+tasks.push({text,date,time,color,done:false});
+
+save();
+render();
+
+}
+
+function addTaskManual(){
+
+let d=prompt("יום בחודש");
+
+if(!d)return;
+
+let y=current.getFullYear();
+let m=current.getMonth()+1;
+
+let date=y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+
+addTask(date);
+
+}
+
+function deleteTask(i){
+
+tasks.splice(i,1);
 
 save();
 render();
@@ -173,62 +235,18 @@ render();
 
 }
 
-function duplicateTask(i){
-
-let copy={...tasks[i]};
-tasks.push(copy);
-
-save();
-render();
-
-}
-
-function render(){
+function renderDay(dateStr){
 
 let cal=document.getElementById("calendar");
-cal.innerHTML="";
-
-let year=current.getFullYear();
-let month=current.getMonth();
-
-document.getElementById("monthLabel").innerText=
-current.toLocaleDateString("he-IL",{month:"long",year:"numeric"});
-
-let firstDay=new Date(year,month,1).getDay();
-let days=new Date(year,month+1,0).getDate();
-
-for(let i=0;i<firstDay;i++){
-
-let empty=document.createElement("div");
-cal.appendChild(empty);
-
-}
-
-for(let d=1;d<=days;d++){
-
-let dateStr=year+"-"+String(month+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
 
 let day=document.createElement("div");
 day.className="day";
 
 day.onclick=()=>addTask(dateStr);
 
-day.ondragover=e=>e.preventDefault();
-
-day.ondrop=e=>{
-
-let id=e.dataTransfer.getData("id");
-
-tasks[id].date=dateStr;
-
-save();
-render();
-
-};
-
 let date=document.createElement("div");
 date.className="date";
-date.innerText=d;
+date.innerText=dateStr;
 
 day.appendChild(date);
 
@@ -237,27 +255,20 @@ tasks.forEach((task,i)=>{
 if(task.date!==dateStr)return;
 
 let t=document.createElement("div");
-t.className="task "+task.priority;
+
+t.className="task";
+
+t.style.background=task.color;
 
 if(task.done)t.classList.add("done");
-
-t.draggable=true;
-
-t.ondragstart=e=>{
-e.dataTransfer.setData("id",i);
-};
 
 t.innerText=task.time+" "+task.text;
 
 t.onclick=(e)=>{
-
 e.stopPropagation();
-
 tasks[i].done=!tasks[i].done;
-
 save();
 render();
-
 };
 
 let btns=document.createElement("div");
@@ -265,20 +276,14 @@ btns.className="taskBtns";
 
 let edit=document.createElement("button");
 edit.innerText="✏";
-edit.onclick=(e)=>{
-e.stopPropagation();
-editTask(i);
-};
+edit.onclick=(e)=>{e.stopPropagation();editTask(i);};
 
-let dup=document.createElement("button");
-dup.innerText="📑";
-dup.onclick=(e)=>{
-e.stopPropagation();
-duplicateTask(i);
-};
+let del=document.createElement("button");
+del.innerText="🗑";
+del.onclick=(e)=>{e.stopPropagation();deleteTask(i);};
 
 btns.appendChild(edit);
-btns.appendChild(dup);
+btns.appendChild(del);
 
 t.appendChild(btns);
 
@@ -290,19 +295,68 @@ cal.appendChild(day);
 
 }
 
+function render(){
+
+let cal=document.getElementById("calendar");
+
+cal.innerHTML="";
+cal.className="calendar "+view;
+
+let y=current.getFullYear();
+let m=current.getMonth();
+
+if(view==="month"){
+
+document.getElementById("label").innerText=
+current.toLocaleDateString("he-IL",{month:"long",year:"numeric"});
+
+let first=new Date(y,m,1).getDay();
+let days=new Date(y,m+1,0).getDate();
+
+for(let i=0;i<first;i++){
+cal.appendChild(document.createElement("div"));
 }
 
-function prevMonth(){
+for(let d=1;d<=days;d++){
 
-current.setMonth(current.getMonth()-1);
-render();
+let dateStr=y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+
+renderDay(dateStr);
 
 }
 
-function nextMonth(){
+}
 
-current.setMonth(current.getMonth()+1);
-render();
+if(view==="week"){
+
+let start=new Date(current);
+start.setDate(current.getDate()-current.getDay());
+
+document.getElementById("label").innerText="שבוע";
+
+for(let i=0;i<7;i++){
+
+let d=new Date(start);
+
+d.setDate(start.getDate()+i);
+
+let dateStr=d.toISOString().split("T")[0];
+
+renderDay(dateStr);
+
+}
+
+}
+
+if(view==="day"){
+
+let dateStr=current.toISOString().split("T")[0];
+
+document.getElementById("label").innerText="יום";
+
+renderDay(dateStr);
+
+}
 
 }
 
