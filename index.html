@@ -53,6 +53,10 @@ padding:6px;
 min-height:120px;
 }
 
+.todayHighlight{
+border:3px solid #4CAF50;
+}
+
 .date{
 font-weight:bold;
 margin-bottom:4px;
@@ -88,14 +92,12 @@ flex-direction:column;
 .menuHeader{
 display:flex;
 justify-content:space-between;
-align-items:center;
 font-size:12px;
-margin-bottom:5px;
+margin-bottom:4px;
 }
 
 .closeMenu{
 cursor:pointer;
-font-weight:bold;
 }
 
 .taskMenu button{
@@ -176,9 +178,9 @@ padding:5px;
 <span class="closeMenu" onclick="hideMenu()">✖</span>
 </div>
 
-<button onclick="editTask()">✏ ערוך</button>
-<button onclick="duplicateTask()">📑 שכפל</button>
-<button onclick="deleteTask()">🗑 מחק</button>
+<button onclick="editTask()">ערוך</button>
+<button onclick="duplicateTask()">שכפל</button>
+<button onclick="deleteTask()">מחק</button>
 
 </div>
 
@@ -230,26 +232,18 @@ localStorage.setItem("tasks",JSON.stringify(tasks));
 }
 
 function getWeekNumber(date){
-
-let firstDay=new Date(date.getFullYear(),0,1);
-let pastDays=(date-firstDay)/86400000;
-
-return Math.ceil((pastDays+firstDay.getDay()+1)/7);
-
+let first=new Date(date.getFullYear(),0,1);
+let past=(date-first)/86400000;
+return Math.ceil((past+first.getDay()+1)/7);
 }
 
 function createTimes(){
-
 for(let h=0;h<24;h++){
 for(let m=0;m<60;m+=30){
-
 let t=(h+"").padStart(2,"0")+":"+(m+"").padStart(2,"0");
-
 start.add(new Option(t,t));
 end.add(new Option(t,t));
-
 }}
-
 }
 
 function setView(v){
@@ -272,22 +266,15 @@ render();
 }
 
 function showMenu(e,i){
-
 menuIndex=i;
-
-let menu=document.getElementById("taskMenu");
-
-menu.style.display="flex";
-menu.style.left=e.pageX+"px";
-menu.style.top=e.pageY+"px";
-
+taskMenu.style.display="flex";
+taskMenu.style.left=e.pageX+"px";
+taskMenu.style.top=e.pageY+"px";
 }
 
 function hideMenu(){
 taskMenu.style.display="none";
 }
-
-document.addEventListener("click",hideMenu);
 
 function deleteTask(){
 tasks.splice(menuIndex,1);
@@ -309,23 +296,17 @@ hideMenu();
 }
 
 function openModal(date=null,index=null){
-
 selectedDate=date;
 editIndex=index;
-
 modal.style.display="flex";
 
 if(index!=null){
-
 let t=tasks[index];
-
 text.value=t.text;
 start.value=t.start;
 end.value=t.end;
 color.value=t.color;
-
 }
-
 }
 
 function closeModal(){
@@ -361,6 +342,8 @@ function render(){
 
 calendar.innerHTML="";
 
+let todayStr=new Date().toISOString().split("T")[0];
+
 if(view==="month"){
 
 calendar.className="calendar month";
@@ -377,7 +360,9 @@ for(let i=0;i<first;i++)calendar.appendChild(document.createElement("div"));
 
 for(let d=1;d<=daysInMonth;d++){
 
-renderDay(new Date(y,m,d));
+let date=new Date(y,m,d);
+
+renderDay(date,todayStr);
 
 }
 
@@ -387,17 +372,20 @@ if(view==="week"){
 
 calendar.className="calendar week";
 
-title.innerText="לוח משימות — שבוע "+getWeekNumber(current);
-
 let start=new Date(current);
 start.setDate(current.getDate()-current.getDay());
+
+let end=new Date(start);
+end.setDate(start.getDate()+6);
+
+title.innerText="לוח משימות — שבוע "+getWeekNumber(current)+" | "+start.getDate()+"–"+end.getDate()+" "+months[start.getMonth()];
 
 for(let i=0;i<7;i++){
 
 let d=new Date(start);
 d.setDate(start.getDate()+i);
 
-renderDay(d);
+renderDay(d,todayStr);
 
 }
 
@@ -407,9 +395,9 @@ if(view==="day"){
 
 calendar.className="calendar day";
 
-title.innerText="לוח משימות — "+days[current.getDay()]+" "+current.getDate()+" "+months[current.getMonth()];
+title.innerText="לוח משימות — "+days[current.getDay()]+" | "+current.getDate()+" "+months[current.getMonth()];
 
-renderDay(current);
+renderDay(current,todayStr);
 
 }
 
@@ -417,12 +405,14 @@ renderToday();
 
 }
 
-function renderDay(date){
+function renderDay(date,todayStr){
 
 let dateStr=date.toISOString().split("T")[0];
 
 let box=document.createElement("div");
 box.className="dayBox";
+
+if(dateStr===todayStr)box.classList.add("todayHighlight");
 
 box.onclick=()=>openModal(dateStr);
 
@@ -489,9 +479,18 @@ todayTasks.appendChild(d);
 
 }
 
+document.addEventListener("click",function(e){
+
+if(!e.target.closest(".taskMenu")) hideMenu();
+
+if(!e.target.closest(".modalBox")) closeModal();
+
+});
+
 createTimes();
 render();
 
 </script>
+
 </body>
 </html>
