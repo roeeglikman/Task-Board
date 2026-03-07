@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>לוח משימות</title>
 
 <style>
@@ -75,34 +74,6 @@ font-size:12px;
 cursor:pointer;
 }
 
-.taskMenu{
-position:absolute;
-background:white;
-border-radius:8px;
-box-shadow:0 2px 10px rgba(0,0,0,0.2);
-padding:6px;
-display:none;
-flex-direction:column;
-}
-
-.taskMenu button{
-background:#eee;
-color:black;
-margin-bottom:4px;
-}
-
-.today{
-position:fixed;
-top:10px;
-right:10px;
-background:white;
-padding:10px;
-border-radius:10px;
-width:200px;
-box-shadow:0 2px 8px rgba(0,0,0,0.2);
-font-size:12px;
-}
-
 .modal{
 position:fixed;
 top:0;
@@ -127,6 +98,18 @@ width:260px;
 width:100%;
 margin-bottom:6px;
 padding:5px;
+}
+
+.today{
+position:fixed;
+top:10px;
+right:10px;
+background:white;
+padding:10px;
+border-radius:10px;
+width:200px;
+box-shadow:0 2px 8px rgba(0,0,0,0.2);
+font-size:12px;
 }
 
 </style>
@@ -154,12 +137,6 @@ padding:5px;
 <div class="today">
 <b>משימות להיום</b>
 <div id="todayTasks"></div>
-</div>
-
-<div id="taskMenu" class="taskMenu">
-<button onclick="editTask()">ערוך</button>
-<button onclick="duplicateTask()">שכפל</button>
-<button onclick="deleteTask()">מחק</button>
 </div>
 
 <div class="modal" id="modal">
@@ -190,6 +167,7 @@ padding:5px;
 <button onclick="closeModal()">ביטול</button>
 
 </div>
+
 </div>
 
 <script>
@@ -199,8 +177,6 @@ let tasks=JSON.parse(localStorage.getItem("tasks"))||[];
 let current=new Date();
 let view="month";
 let selectedDate=null;
-let editIndex=null;
-let menuIndex=null;
 
 const days=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
 const months=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
@@ -210,7 +186,10 @@ localStorage.setItem("tasks",JSON.stringify(tasks));
 }
 
 function formatDate(d){
-return d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0")+"-"+d.getDate().toString().padStart(2,"0");
+let y=d.getFullYear();
+let m=(d.getMonth()+1).toString().padStart(2,"0");
+let day=d.getDate().toString().padStart(2,"0");
+return y+"-"+m+"-"+day;
 }
 
 function createTimes(){
@@ -220,6 +199,41 @@ let t=(h+"").padStart(2,"0")+":"+(m+"").padStart(2,"0");
 start.add(new Option(t,t));
 end.add(new Option(t,t));
 }}
+}
+
+function openModal(date=null){
+
+selectedDate=date || formatDate(new Date());
+
+modal.style.display="flex";
+
+}
+
+function closeModal(){
+
+modal.style.display="none";
+text.value="";
+
+}
+
+function saveTask(){
+
+if(!selectedDate)return;
+
+let task={
+text:text.value,
+start:start.value,
+end:end.value,
+color:color.value,
+date:selectedDate
+};
+
+tasks.push(task);
+
+save();
+closeModal();
+render();
+
 }
 
 function setView(v){
@@ -239,57 +253,6 @@ if(view==="month")current.setMonth(current.getMonth()+1);
 if(view==="week")current.setDate(current.getDate()+7);
 if(view==="day")current.setDate(current.getDate()+1);
 render();
-}
-
-function openModal(date=null,index=null){
-
-selectedDate=date || formatDate(new Date());
-editIndex=index;
-
-modal.style.display="flex";
-
-if(index!=null){
-
-let t=tasks[index];
-
-text.value=t.text;
-start.value=t.start;
-end.value=t.end;
-color.value=t.color;
-
-}
-
-}
-
-function closeModal(){
-
-modal.style.display="none";
-text.value="";
-editIndex=null;
-
-}
-
-function saveTask(){
-
-let task={
-text:text.value,
-start:start.value,
-end:end.value,
-color:color.value,
-date:selectedDate,
-done:false
-};
-
-if(editIndex!=null){
-tasks[editIndex]=task;
-}else{
-tasks.push(task);
-}
-
-save();
-closeModal();
-render();
-
 }
 
 function render(){
@@ -376,18 +339,14 @@ header.innerText=days[date.getDay()]+" "+date.getDate();
 
 box.appendChild(header);
 
-tasks.forEach((t,i)=>{
+tasks.forEach(t=>{
 
 if(t.date!==dateStr)return;
 
 let task=document.createElement("div");
 task.className="task";
 task.style.background=t.color;
-
-let span=document.createElement("span");
-span.innerText=t.start+" "+t.text;
-
-task.appendChild(span);
+task.innerText=t.start+" "+t.text;
 
 box.appendChild(task);
 
