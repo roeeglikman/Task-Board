@@ -15,10 +15,7 @@ margin:0;
 padding:15px;
 }
 
-h1{
-text-align:center;
-margin-bottom:10px;
-}
+h1{text-align:center;margin-bottom:10px;}
 
 .controls{
 display:flex;
@@ -64,9 +61,6 @@ font-size:13px;
 }
 
 .task{
-display:flex;
-align-items:center;
-gap:6px;
 padding:4px;
 margin-top:4px;
 border-radius:5px;
@@ -83,27 +77,24 @@ position:absolute;
 background:white;
 border-radius:8px;
 box-shadow:0 2px 10px rgba(0,0,0,0.2);
-padding:6px;
+padding:8px;
 display:none;
 flex-direction:column;
+width:120px;
 }
+
+.menuHeader{
+display:flex;
+justify-content:space-between;
+margin-bottom:4px;
+}
+
+.closeMenu{cursor:pointer}
 
 .taskMenu button{
 background:#eee;
 color:black;
 margin-bottom:4px;
-}
-
-.today{
-position:fixed;
-top:10px;
-right:10px;
-background:white;
-padding:10px;
-border-radius:10px;
-width:200px;
-box-shadow:0 2px 8px rgba(0,0,0,0.2);
-font-size:12px;
 }
 
 .modal{
@@ -130,6 +121,18 @@ width:260px;
 width:100%;
 margin-bottom:6px;
 padding:5px;
+}
+
+.today{
+position:fixed;
+top:10px;
+right:10px;
+background:white;
+padding:10px;
+border-radius:10px;
+width:200px;
+box-shadow:0 2px 8px rgba(0,0,0,0.2);
+font-size:12px;
 }
 
 </style>
@@ -160,9 +163,16 @@ padding:5px;
 </div>
 
 <div id="taskMenu" class="taskMenu">
+
+<div class="menuHeader">
+פעולות
+<span class="closeMenu" onclick="hideMenu()">✖</span>
+</div>
+
 <button onclick="editTask()">ערוך</button>
 <button onclick="duplicateTask()">שכפל</button>
 <button onclick="deleteTask()">מחק</button>
+
 </div>
 
 <div class="modal" id="modal">
@@ -285,29 +295,46 @@ taskMenu.style.top=e.pageY+"px";
 
 }
 
-function deleteTask(){
+function hideMenu(){
+taskMenu.style.display="none";
+}
 
+function deleteTask(){
 tasks.splice(menuIndex,1);
 save();
-taskMenu.style.display="none";
+hideMenu();
 render();
-
 }
 
 function duplicateTask(){
-
 tasks.push({...tasks[menuIndex]});
 save();
-taskMenu.style.display="none";
+hideMenu();
 render();
-
 }
 
 function editTask(){
-
 openModal(tasks[menuIndex].date,menuIndex);
-taskMenu.style.display="none";
+hideMenu();
+}
 
+function setView(v){
+view=v;
+render();
+}
+
+function prev(){
+if(view==="month")current.setMonth(current.getMonth()-1);
+if(view==="week")current.setDate(current.getDate()-7);
+if(view==="day")current.setDate(current.getDate()-1);
+render();
+}
+
+function next(){
+if(view==="month")current.setMonth(current.getMonth()+1);
+if(view==="week")current.setDate(current.getDate()+7);
+if(view==="day")current.setDate(current.getDate()+1);
+render();
 }
 
 function render(){
@@ -331,9 +358,7 @@ let daysInMonth=new Date(y,m+1,0).getDate();
 for(let i=0;i<first;i++)calendar.appendChild(document.createElement("div"));
 
 for(let d=1;d<=daysInMonth;d++){
-
 renderDay(new Date(y,m,d),today);
-
 }
 
 }
@@ -345,18 +370,10 @@ calendar.className="calendar week";
 let start=new Date(current);
 start.setDate(current.getDate()-current.getDay());
 
-let end=new Date(start);
-end.setDate(start.getDate()+6);
-
-title.innerText="שבוע "+getWeekNumber(current)+" | "+start.getDate()+"-"+end.getDate()+" "+months[start.getMonth()];
-
 for(let i=0;i<7;i++){
-
 let d=new Date(start);
 d.setDate(start.getDate()+i);
-
 renderDay(d,today);
-
 }
 
 }
@@ -364,8 +381,6 @@ renderDay(d,today);
 if(view==="day"){
 
 calendar.className="calendar day";
-
-title.innerText=days[current.getDay()]+" "+current.getDate()+" "+months[current.getMonth()];
 
 renderDay(current,null);
 
@@ -406,6 +421,7 @@ tasks.forEach((t,i)=>{
 if(t.date!==dateStr)return;
 
 let task=document.createElement("div");
+
 task.className="task "+(t.priority==="high"?"priorityHigh":t.priority==="med"?"priorityMed":"priorityLow");
 
 task.style.background=t.color;
@@ -450,14 +466,9 @@ todayTasks.appendChild(d);
 
 }
 
-function getWeekNumber(d){
-let first=new Date(d.getFullYear(),0,1);
-return Math.ceil((((d-first)/86400000)+first.getDay()+1)/7);
-}
-
 document.addEventListener("click",function(e){
 
-if(!e.target.closest(".taskMenu"))taskMenu.style.display="none";
+if(!e.target.closest(".taskMenu"))hideMenu();
 
 if(!e.target.closest(".modalBox"))modal.style.display="none";
 
@@ -467,5 +478,6 @@ createTimes();
 render();
 
 </script>
+
 </body>
 </html>
