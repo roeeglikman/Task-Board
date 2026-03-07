@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>לוח משימות</title>
 
 <style>
@@ -36,12 +37,9 @@ cursor:pointer;
 
 .calendar{
 display:grid;
+grid-template-columns:repeat(7,1fr);
 gap:8px;
 }
-
-.month{grid-template-columns:repeat(7,1fr);}
-.week{grid-template-columns:repeat(7,1fr);}
-.dayView{grid-template-columns:1fr;}
 
 .day{
 background:white;
@@ -59,7 +57,7 @@ margin-bottom:4px;
 .task{
 display:flex;
 align-items:center;
-gap:5px;
+gap:6px;
 padding:4px;
 margin-top:4px;
 border-radius:5px;
@@ -98,6 +96,22 @@ margin-bottom:6px;
 padding:5px;
 }
 
+.taskMenu{
+position:absolute;
+background:white;
+border-radius:8px;
+padding:8px;
+box-shadow:0 2px 8px rgba(0,0,0,0.3);
+display:none;
+flex-direction:column;
+gap:4px;
+}
+
+.taskMenu button{
+background:#eee;
+color:black;
+}
+
 .todayBox{
 position:fixed;
 top:10px;
@@ -108,11 +122,6 @@ border-radius:10px;
 width:200px;
 box-shadow:0 2px 8px rgba(0,0,0,0.2);
 font-size:12px;
-}
-
-.todayBox h3{
-margin-top:0;
-font-size:14px;
 }
 
 </style>
@@ -128,18 +137,14 @@ font-size:14px;
 <button onclick="prev()">⬅</button>
 <button onclick="next()">➡</button>
 
-<button onclick="setView('month')">חודש</button>
-<button onclick="setView('week')">שבוע</button>
-<button onclick="setView('day')">יום</button>
-
 <button onclick="openModal()">➕ משימה</button>
 
 </div>
 
 <div id="calendar" class="calendar"></div>
 
-<div id="todayBox" class="todayBox">
-<h3>משימות להיום</h3>
+<div class="todayBox">
+<b>משימות להיום</b>
 <div id="todayTasks"></div>
 </div>
 
@@ -182,14 +187,20 @@ font-size:14px;
 
 </div>
 
+<div id="taskMenu" class="taskMenu">
+<button onclick="editTask()">✏ ערוך</button>
+<button onclick="duplicateTask()">📑 שכפל</button>
+<button onclick="deleteTask()">🗑 מחק</button>
+</div>
+
 <script>
 
 let tasks=JSON.parse(localStorage.getItem("tasks"))||[];
 
 let current=new Date();
-let view="month";
 let selectedDate=null;
 let editIndex=null;
+let menuIndex=null;
 
 const daysHeb=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
 const months=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
@@ -242,11 +253,6 @@ function closeModal(){
 modal.style.display="none";
 
 taskText.value="";
-start.selectedIndex=0;
-end.selectedIndex=0;
-priority.selectedIndex=0;
-color.selectedIndex=0;
-
 editIndex=null;
 
 }
@@ -264,13 +270,9 @@ done:false
 };
 
 if(editIndex!=null){
-
 tasks[editIndex]=task;
-
 }else{
-
 tasks.push(task);
-
 }
 
 save();
@@ -279,32 +281,45 @@ render();
 
 }
 
-function toggleDone(i){
+function showMenu(e,i){
 
-tasks[i].done=!tasks[i].done;
+menuIndex=i;
 
+let menu=document.getElementById("taskMenu");
+
+menu.style.display="flex";
+menu.style.left=e.pageX+"px";
+menu.style.top=e.pageY+"px";
+
+}
+
+function hideMenu(){
+taskMenu.style.display="none";
+}
+
+document.addEventListener("click",hideMenu);
+
+function deleteTask(){
+
+tasks.splice(menuIndex,1);
 save();
 render();
 
 }
 
-function deleteTask(i){
+function duplicateTask(){
 
-tasks.splice(i,1);
-
-save();
-render();
-
-}
-
-function duplicateTask(i){
-
-let copy={...tasks[i]};
-
+let copy={...tasks[menuIndex]};
 tasks.push(copy);
 
 save();
 render();
+
+}
+
+function editTask(){
+
+openModal(tasks[menuIndex].date,menuIndex);
 
 }
 
@@ -333,43 +348,27 @@ let t=document.createElement("div");
 t.className="task";
 t.style.background=task.color;
 
-if(task.done)t.classList.add("done");
-
 let checkbox=document.createElement("input");
 checkbox.type="checkbox";
 checkbox.checked=task.done;
 
 checkbox.onclick=(e)=>{
 e.stopPropagation();
-toggleDone(i);
+task.done=!task.done;
+save();
+render();
 };
 
 let text=document.createElement("span");
-text.innerText=task.start+"-"+task.end+" "+task.text;
-
-text.onclick=(e)=>{
-e.stopPropagation();
-openModal(task.date,i);
-};
-
-let del=document.createElement("button");
-del.innerText="🗑";
-del.onclick=(e)=>{
-e.stopPropagation();
-deleteTask(i);
-};
-
-let dup=document.createElement("button");
-dup.innerText="📑";
-dup.onclick=(e)=>{
-e.stopPropagation();
-duplicateTask(i);
-};
+text.innerText=task.start+" "+task.text;
 
 t.appendChild(checkbox);
 t.appendChild(text);
-t.appendChild(del);
-t.appendChild(dup);
+
+t.onclick=(e)=>{
+e.stopPropagation();
+showMenu(e,i);
+};
 
 day.appendChild(t);
 
@@ -402,14 +401,10 @@ todayTasks.appendChild(div);
 
 function render(){
 
-let cal=document.getElementById("calendar");
-cal.innerHTML="";
-cal.className="calendar "+view;
+calendar.innerHTML="";
 
 let y=current.getFullYear();
 let m=current.getMonth();
-
-if(view==="month"){
 
 label.innerText="לוח משימות — "+months[m]+" "+(m+1);
 
@@ -417,7 +412,7 @@ let first=new Date(y,m,1).getDay();
 let days=new Date(y,m+1,0).getDate();
 
 for(let i=0;i<first;i++){
-cal.appendChild(document.createElement("div"));
+calendar.appendChild(document.createElement("div"));
 }
 
 for(let d=1;d<=days;d++){
@@ -425,8 +420,6 @@ for(let d=1;d<=days;d++){
 let dateStr=y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
 
 renderDay(dateStr);
-
-}
 
 }
 
