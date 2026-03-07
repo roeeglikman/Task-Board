@@ -1,10 +1,9 @@
-<!-- version 2 -->
 <!DOCTYPE html>
 <html lang="he">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>לוח משימות חודשי</title>
+<title>לוח משימות</title>
 
 <style>
 
@@ -16,7 +15,7 @@ margin:0;
 padding:20px;
 }
 
-h1{text-align:center;}
+h1{text-align:center}
 
 .controls{
 display:flex;
@@ -34,18 +33,6 @@ border-radius:5px;
 cursor:pointer;
 }
 
-.add{
-background:white;
-padding:15px;
-border-radius:10px;
-margin-bottom:20px;
-}
-
-input,select{
-padding:6px;
-margin:5px;
-}
-
 .calendar{
 display:grid;
 grid-template-columns:repeat(7,1fr);
@@ -55,13 +42,13 @@ gap:10px;
 .day{
 background:white;
 border-radius:10px;
-padding:5px;
+padding:6px;
 min-height:120px;
 }
 
 .date{
 font-weight:bold;
-font-size:14px;
+margin-bottom:4px;
 }
 
 .task{
@@ -82,39 +69,32 @@ text-decoration:line-through;
 opacity:0.5;
 }
 
-.taskButtons{
+.taskBtns{
 display:flex;
 gap:4px;
-margin-top:3px;
+margin-top:2px;
 }
 
-.taskButtons button{
+.taskBtns button{
 background:#ddd;
 color:black;
-padding:2px 5px;
-font-size:11px;
+padding:2px 4px;
+font-size:10px;
 }
 
 </style>
+
 </head>
 
 <body>
 
-<h1>📅 לוח משימות חודשי</h1>
+<h1>📅 לוח משימות</h1>
 
 <div class="controls">
 
 <button onclick="prevMonth()">⬅</button>
 <div id="monthLabel"></div>
 <button onclick="nextMonth()">➡</button>
-
-</div>
-
-<div class="add">
-
-<input id="text" placeholder="משימה">
-
-<input type="number" id="dayInput" min="1" max="31" placeholder="יום בחודש">
 
 <select id="time"></select>
 
@@ -123,8 +103,6 @@ font-size:11px;
 <option value="medium">בינונית</option>
 <option value="low">נמוכה</option>
 </select>
-
-<button onclick="addTask()">הוסף</button>
 
 </div>
 
@@ -161,17 +139,21 @@ select.appendChild(opt);
 
 }
 
-function addTask(){
+function addTask(date){
 
-let text=document.getElementById("text").value;
-let date=document.getElementById("date").value;
+let text=prompt("משימה חדשה");
+
+if(!text)return;
+
 let time=document.getElementById("time").value;
 let priority=document.getElementById("priority").value;
 
-if(!text || !date)return;
-
 tasks.push({
-text,date,time,priority,done:false
+text,
+date,
+time,
+priority,
+done:false
 });
 
 save();
@@ -181,15 +163,12 @@ render();
 
 function editTask(i){
 
-let newText=prompt("ערוך משימה",tasks[i].text);
+let t=prompt("ערוך משימה",tasks[i].text);
 
-if(newText){
-
-tasks[i].text=newText;
-
+if(t){
+tasks[i].text=t;
 save();
 render();
-
 }
 
 }
@@ -197,7 +176,6 @@ render();
 function duplicateTask(i){
 
 let copy={...tasks[i]};
-
 tasks.push(copy);
 
 save();
@@ -217,7 +195,7 @@ document.getElementById("monthLabel").innerText=
 current.toLocaleDateString("he-IL",{month:"long",year:"numeric"});
 
 let firstDay=new Date(year,month,1).getDay();
-let daysInMonth=new Date(year,month+1,0).getDate();
+let days=new Date(year,month+1,0).getDate();
 
 for(let i=0;i<firstDay;i++){
 
@@ -226,12 +204,14 @@ cal.appendChild(empty);
 
 }
 
-for(let d=1;d<=daysInMonth;d++){
+for(let d=1;d<=days;d++){
 
 let dateStr=year+"-"+String(month+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
 
 let day=document.createElement("div");
 day.className="day";
+
+day.onclick=()=>addTask(dateStr);
 
 day.ondragover=e=>e.preventDefault();
 
@@ -269,7 +249,9 @@ e.dataTransfer.setData("id",i);
 
 t.innerText=task.time+" "+task.text;
 
-t.onclick=()=>{
+t.onclick=(e)=>{
+
+e.stopPropagation();
 
 tasks[i].done=!tasks[i].done;
 
@@ -279,15 +261,21 @@ render();
 };
 
 let btns=document.createElement("div");
-btns.className="taskButtons";
+btns.className="taskBtns";
 
 let edit=document.createElement("button");
 edit.innerText="✏";
-edit.onclick=()=>editTask(i);
+edit.onclick=(e)=>{
+e.stopPropagation();
+editTask(i);
+};
 
 let dup=document.createElement("button");
 dup.innerText="📑";
-dup.onclick=()=>duplicateTask(i);
+dup.onclick=(e)=>{
+e.stopPropagation();
+duplicateTask(i);
+};
 
 btns.appendChild(edit);
 btns.appendChild(dup);
@@ -325,5 +313,3 @@ render();
 
 </body>
 </html>
-
-
