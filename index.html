@@ -39,17 +39,9 @@ display:grid;
 gap:8px;
 }
 
-.month{
-grid-template-columns:repeat(7,1fr);
-}
-
-.week{
-grid-template-columns:repeat(7,1fr);
-}
-
-.dayView{
-grid-template-columns:1fr;
-}
+.month{grid-template-columns:repeat(7,1fr);}
+.week{grid-template-columns:repeat(7,1fr);}
+.dayView{grid-template-columns:1fr;}
 
 .day{
 background:white;
@@ -61,6 +53,7 @@ min-height:110px;
 .date{
 font-weight:bold;
 margin-bottom:4px;
+font-size:13px;
 }
 
 .task{
@@ -68,8 +61,7 @@ padding:4px;
 margin-top:4px;
 border-radius:5px;
 font-size:12px;
-cursor:grab;
-background:#eee;
+cursor:pointer;
 }
 
 .done{
@@ -77,17 +69,30 @@ text-decoration:line-through;
 opacity:0.5;
 }
 
-.taskBtns{
-display:flex;
-gap:3px;
-margin-top:2px;
+.modal{
+position:fixed;
+top:0;
+left:0;
+right:0;
+bottom:0;
+background:rgba(0,0,0,0.4);
+display:none;
+align-items:center;
+justify-content:center;
 }
 
-.taskBtns button{
-background:#ddd;
-color:black;
-padding:2px 4px;
-font-size:10px;
+.modalContent{
+background:white;
+padding:15px;
+border-radius:10px;
+width:260px;
+}
+
+.modalContent input,
+.modalContent select{
+width:100%;
+margin-bottom:6px;
+padding:5px;
 }
 
 </style>
@@ -96,33 +101,61 @@ font-size:10px;
 
 <body>
 
-<h1>📅 לוח משימות</h1>
+<h1 id="label">לוח משימות</h1>
 
 <div class="controls">
 
 <button onclick="prev()">⬅</button>
-<div id="label"></div>
 <button onclick="next()">➡</button>
 
 <button onclick="setView('month')">חודש</button>
 <button onclick="setView('week')">שבוע</button>
 <button onclick="setView('day')">יום</button>
 
-<select id="time"></select>
+<button onclick="openModal()">➕ משימה</button>
 
+</div>
+
+<div id="calendar" class="calendar"></div>
+
+<div class="modal" id="modal">
+
+<div class="modalContent">
+
+<input id="taskText" placeholder="משימה">
+
+<label>שעת התחלה</label>
+<select id="start"></select>
+
+<label>שעת סיום</label>
+<select id="end"></select>
+
+<label>עדיפות</label>
 <select id="priority">
 <option>גבוהה</option>
 <option>בינונית</option>
 <option>נמוכה</option>
 </select>
 
-<input type="color" id="color" value="#eeeeee">
+<label>צבע</label>
+<select id="color">
+<option value="#FFCDD2">אדום</option>
+<option value="#FFE0B2">כתום</option>
+<option value="#FFF9C4">צהוב</option>
+<option value="#C8E6C9">ירוק</option>
+<option value="#B3E5FC">תכלת</option>
+<option value="#D1C4E9">סגול</option>
+<option value="#F8BBD0">ורוד</option>
+<option value="#E0E0E0">אפור</option>
+<option value="#FFFFFF">לבן</option>
+<option value="#BBDEFB">כחול</option>
+</select>
 
-<button onclick="addTaskManual()">➕ משימה</button>
+<button onclick="saveTask()">שמור</button>
 
 </div>
 
-<div id="calendar" class="calendar"></div>
+</div>
 
 <script>
 
@@ -130,6 +163,11 @@ let tasks=JSON.parse(localStorage.getItem("tasks"))||[];
 
 let current=new Date();
 let view="month";
+let selectedDate=null;
+
+const daysHeb=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+
+const months=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
 
 function save(){
 localStorage.setItem("tasks",JSON.stringify(tasks));
@@ -137,7 +175,8 @@ localStorage.setItem("tasks",JSON.stringify(tasks));
 
 function createTimes(){
 
-let select=document.getElementById("time");
+let s=document.getElementById("start");
+let e=document.getElementById("end");
 
 for(let h=0;h<24;h++){
 for(let m=0;m<60;m+=30){
@@ -145,11 +184,10 @@ for(let m=0;m<60;m+=30){
 let hh=h.toString().padStart(2,"0");
 let mm=m.toString().padStart(2,"0");
 
-let opt=document.createElement("option");
-opt.value=hh+":"+mm;
-opt.innerText=hh+":"+mm;
+let t=hh+":"+mm;
 
-select.appendChild(opt);
+s.add(new Option(t,t));
+e.add(new Option(t,t));
 
 }
 }
@@ -157,82 +195,63 @@ select.appendChild(opt);
 }
 
 function setView(v){
-
 view=v;
 render();
-
 }
 
 function prev(){
-
-if(view==="month") current.setMonth(current.getMonth()-1);
-if(view==="week") current.setDate(current.getDate()-7);
-if(view==="day") current.setDate(current.getDate()-1);
-
+if(view==="month")current.setMonth(current.getMonth()-1);
+if(view==="week")current.setDate(current.getDate()-7);
+if(view==="day")current.setDate(current.getDate()-1);
 render();
-
 }
 
 function next(){
-
-if(view==="month") current.setMonth(current.getMonth()+1);
-if(view==="week") current.setDate(current.getDate()+7);
-if(view==="day") current.setDate(current.getDate()+1);
-
+if(view==="month")current.setMonth(current.getMonth()+1);
+if(view==="week")current.setDate(current.getDate()+7);
+if(view==="day")current.setDate(current.getDate()+1);
 render();
-
 }
 
-function addTask(date){
+function openModal(date=null){
+selectedDate=date;
+document.getElementById("modal").style.display="flex";
+}
 
-let text=prompt("משימה");
+function saveTask(){
 
-if(!text)return;
-
-let time=document.getElementById("time").value;
+let text=document.getElementById("taskText").value;
+let start=document.getElementById("start").value;
+let end=document.getElementById("end").value;
 let color=document.getElementById("color").value;
+let priority=document.getElementById("priority").value;
 
-tasks.push({text,date,time,color,done:false});
-
-save();
-render();
-
-}
-
-function addTaskManual(){
+if(!selectedDate){
 
 let d=prompt("יום בחודש");
-
 if(!d)return;
 
 let y=current.getFullYear();
 let m=current.getMonth()+1;
 
-let date=y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+selectedDate=y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");
 
-addTask(date);
+}
+
+tasks.push({text,start,end,color,priority,date:selectedDate,done:false});
+
+save();
+
+document.getElementById("modal").style.display="none";
+
+render();
 
 }
 
 function deleteTask(i){
-
 tasks.splice(i,1);
-
 save();
 render();
-
-}
-
-function editTask(i){
-
-let t=prompt("ערוך משימה",tasks[i].text);
-
-if(t){
-tasks[i].text=t;
-save();
-render();
-}
-
 }
 
 function renderDay(dateStr){
@@ -242,11 +261,13 @@ let cal=document.getElementById("calendar");
 let day=document.createElement("div");
 day.className="day";
 
-day.onclick=()=>addTask(dateStr);
+day.onclick=()=>openModal(dateStr);
+
+let d=new Date(dateStr);
 
 let date=document.createElement("div");
 date.className="date";
-date.innerText=dateStr;
+date.innerText=daysHeb[d.getDay()]+" "+d.getDate();
 
 day.appendChild(date);
 
@@ -255,14 +276,13 @@ tasks.forEach((task,i)=>{
 if(task.date!==dateStr)return;
 
 let t=document.createElement("div");
-
 t.className="task";
 
 t.style.background=task.color;
 
 if(task.done)t.classList.add("done");
 
-t.innerText=task.time+" "+task.text;
+t.innerText=task.start+"-"+task.end+" "+task.text;
 
 t.onclick=(e)=>{
 e.stopPropagation();
@@ -271,21 +291,15 @@ save();
 render();
 };
 
-let btns=document.createElement("div");
-btns.className="taskBtns";
-
-let edit=document.createElement("button");
-edit.innerText="✏";
-edit.onclick=(e)=>{e.stopPropagation();editTask(i);};
-
 let del=document.createElement("button");
 del.innerText="🗑";
-del.onclick=(e)=>{e.stopPropagation();deleteTask(i);};
 
-btns.appendChild(edit);
-btns.appendChild(del);
+del.onclick=(e)=>{
+e.stopPropagation();
+deleteTask(i);
+};
 
-t.appendChild(btns);
+t.appendChild(del);
 
 day.appendChild(t);
 
@@ -298,7 +312,6 @@ cal.appendChild(day);
 function render(){
 
 let cal=document.getElementById("calendar");
-
 cal.innerHTML="";
 cal.className="calendar "+view;
 
@@ -308,7 +321,7 @@ let m=current.getMonth();
 if(view==="month"){
 
 document.getElementById("label").innerText=
-current.toLocaleDateString("he-IL",{month:"long",year:"numeric"});
+"לוח משימות — "+months[m]+" "+(m+1);
 
 let first=new Date(y,m,1).getDay();
 let days=new Date(y,m+1,0).getDate();
@@ -332,12 +345,20 @@ if(view==="week"){
 let start=new Date(current);
 start.setDate(current.getDate()-current.getDay());
 
-document.getElementById("label").innerText="שבוע";
+let end=new Date(start);
+end.setDate(start.getDate()+6);
+
+let weekNumber=Math.ceil(
+((start-new Date(start.getFullYear(),0,1))/86400000+start.getDay()+1)/7
+);
+
+document.getElementById("label").innerText=
+"לוח משימות — שבוע "+weekNumber+
+" | "+start.getDate()+"-"+end.getDate()+" "+months[start.getMonth()];
 
 for(let i=0;i<7;i++){
 
 let d=new Date(start);
-
 d.setDate(start.getDate()+i);
 
 let dateStr=d.toISOString().split("T")[0];
@@ -350,9 +371,12 @@ renderDay(dateStr);
 
 if(view==="day"){
 
-let dateStr=current.toISOString().split("T")[0];
+let d=current;
 
-document.getElementById("label").innerText="יום";
+document.getElementById("label").innerText=
+"לוח משימות — "+daysHeb[d.getDay()]+" | "+d.getDate()+" "+months[d.getMonth()];
+
+let dateStr=d.toISOString().split("T")[0];
 
 renderDay(dateStr);
 
