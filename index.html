@@ -41,7 +41,14 @@ gap:8px;
 
 .month{grid-template-columns:repeat(7,1fr);}
 .week{grid-template-columns:repeat(7,1fr);}
-.day{background:white;border-radius:10px;padding:6px;min-height:110px}
+.dayView{grid-template-columns:1fr;}
+
+.day{
+background:white;
+border-radius:10px;
+padding:6px;
+min-height:110px;
+}
 
 .date{
 font-weight:bold;
@@ -50,6 +57,9 @@ margin-bottom:4px;
 }
 
 .task{
+display:flex;
+align-items:center;
+gap:5px;
 padding:4px;
 margin-top:4px;
 border-radius:5px;
@@ -88,24 +98,25 @@ margin-bottom:6px;
 padding:5px;
 }
 
-.taskMenu{
+.todayBox{
 position:fixed;
+top:10px;
+right:10px;
 background:white;
-border-radius:8px;
 padding:10px;
-box-shadow:0 2px 8px rgba(0,0,0,0.3);
-display:none;
+border-radius:10px;
+width:200px;
+box-shadow:0 2px 8px rgba(0,0,0,0.2);
+font-size:12px;
 }
 
-.taskMenu button{
-display:block;
-width:100%;
-margin-bottom:5px;
-background:#eee;
-color:black;
+.todayBox h3{
+margin-top:0;
+font-size:14px;
 }
 
 </style>
+
 </head>
 
 <body>
@@ -126,6 +137,11 @@ color:black;
 </div>
 
 <div id="calendar" class="calendar"></div>
+
+<div id="todayBox" class="todayBox">
+<h3>משימות להיום</h3>
+<div id="todayTasks"></div>
+</div>
 
 <div class="modal" id="modal">
 
@@ -166,12 +182,6 @@ color:black;
 
 </div>
 
-<div id="taskMenu" class="taskMenu">
-<button onclick="editTask()">✏ ערוך</button>
-<button onclick="duplicateTask()">📑 שכפל</button>
-<button onclick="deleteTask()">🗑 מחק</button>
-</div>
-
 <script>
 
 let tasks=JSON.parse(localStorage.getItem("tasks"))||[];
@@ -179,7 +189,7 @@ let tasks=JSON.parse(localStorage.getItem("tasks"))||[];
 let current=new Date();
 let view="month";
 let selectedDate=null;
-let selectedTask=null;
+let editIndex=null;
 
 const daysHeb=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
 const months=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
@@ -190,9 +200,6 @@ localStorage.setItem("tasks",JSON.stringify(tasks));
 
 function createTimes(){
 
-let s=document.getElementById("start");
-let e=document.getElementById("end");
-
 for(let h=0;h<24;h++){
 for(let m=0;m<60;m+=30){
 
@@ -201,44 +208,38 @@ let mm=m.toString().padStart(2,"0");
 
 let t=hh+":"+mm;
 
-s.add(new Option(t,t));
-e.add(new Option(t,t));
+start.add(new Option(t,t));
+end.add(new Option(t,t));
 
 }
 }
 
 }
 
-function setView(v){
-view=v;
-render();
-}
+function openModal(date=null,index=null){
 
-function prev(){
-if(view==="month")current.setMonth(current.getMonth()-1);
-if(view==="week")current.setDate(current.getDate()-7);
-if(view==="day")current.setDate(current.getDate()-1);
-render();
-}
-
-function next(){
-if(view==="month")current.setMonth(current.getMonth()+1);
-if(view==="week")current.setDate(current.getDate()+7);
-if(view==="day")current.setDate(current.getDate()+1);
-render();
-}
-
-function openModal(date=null){
 selectedDate=date;
-document.getElementById("modal").style.display="flex";
+editIndex=index;
+
+modal.style.display="flex";
+
+if(index!=null){
+
+let task=tasks[index];
+
+taskText.value=task.text;
+start.value=task.start;
+end.value=task.end;
+priority.value=task.priority;
+color.value=task.color;
+
+}
+
 }
 
 function closeModal(){
-document.getElementById("modal").style.display="none";
-clearInputs();
-}
 
-function clearInputs(){
+modal.style.display="none";
 
 taskText.value="";
 start.selectedIndex=0;
@@ -246,29 +247,31 @@ end.selectedIndex=0;
 priority.selectedIndex=0;
 color.selectedIndex=0;
 
+editIndex=null;
+
 }
 
 function saveTask(){
 
-let text=taskText.value;
-let startT=start.value;
-let endT=end.value;
-let colorV=color.value;
-let priorityV=priority.value;
+let task={
+text:taskText.value,
+start:start.value,
+end:end.value,
+priority:priority.value,
+color:color.value,
+date:selectedDate,
+done:false
+};
 
-if(!selectedDate){
+if(editIndex!=null){
 
-let d=prompt("יום בחודש");
-if(!d)return;
+tasks[editIndex]=task;
 
-let y=current.getFullYear();
-let m=current.getMonth()+1;
+}else{
 
-selectedDate=y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+tasks.push(task);
 
 }
-
-tasks.push({text,start:startT,end:endT,color:colorV,priority:priorityV,date:selectedDate,done:false});
 
 save();
 closeModal();
@@ -276,57 +279,34 @@ render();
 
 }
 
-function showTaskMenu(e,i){
+function toggleDone(i){
 
-selectedTask=i;
+tasks[i].done=!tasks[i].done;
 
-let menu=document.getElementById("taskMenu");
-
-menu.style.display="block";
-menu.style.left=e.pageX+"px";
-menu.style.top=e.pageY+"px";
-
-}
-
-function deleteTask(){
-
-tasks.splice(selectedTask,1);
 save();
 render();
-hideMenu();
 
 }
 
-function duplicateTask(){
+function deleteTask(i){
 
-let copy={...tasks[selectedTask]};
+tasks.splice(i,1);
+
+save();
+render();
+
+}
+
+function duplicateTask(i){
+
+let copy={...tasks[i]};
+
 tasks.push(copy);
 
 save();
 render();
-hideMenu();
 
 }
-
-function editTask(){
-
-let t=prompt("ערוך משימה",tasks[selectedTask].text);
-
-if(t){
-tasks[selectedTask].text=t;
-save();
-render();
-}
-
-hideMenu();
-
-}
-
-function hideMenu(){
-document.getElementById("taskMenu").style.display="none";
-}
-
-document.addEventListener("click",hideMenu);
 
 function renderDay(dateStr){
 
@@ -355,18 +335,68 @@ t.style.background=task.color;
 
 if(task.done)t.classList.add("done");
 
-t.innerText=task.start+"-"+task.end+" "+task.text;
+let checkbox=document.createElement("input");
+checkbox.type="checkbox";
+checkbox.checked=task.done;
 
-t.onclick=(e)=>{
+checkbox.onclick=(e)=>{
 e.stopPropagation();
-showTaskMenu(e,i);
+toggleDone(i);
 };
+
+let text=document.createElement("span");
+text.innerText=task.start+"-"+task.end+" "+task.text;
+
+text.onclick=(e)=>{
+e.stopPropagation();
+openModal(task.date,i);
+};
+
+let del=document.createElement("button");
+del.innerText="🗑";
+del.onclick=(e)=>{
+e.stopPropagation();
+deleteTask(i);
+};
+
+let dup=document.createElement("button");
+dup.innerText="📑";
+dup.onclick=(e)=>{
+e.stopPropagation();
+duplicateTask(i);
+};
+
+t.appendChild(checkbox);
+t.appendChild(text);
+t.appendChild(del);
+t.appendChild(dup);
 
 day.appendChild(t);
 
 });
 
 cal.appendChild(day);
+
+}
+
+function renderToday(){
+
+let today=new Date().toISOString().split("T")[0];
+
+todayTasks.innerHTML="";
+
+tasks.forEach(task=>{
+
+if(task.date===today){
+
+let div=document.createElement("div");
+div.innerText=task.start+" "+task.text;
+
+todayTasks.appendChild(div);
+
+}
+
+});
 
 }
 
@@ -399,6 +429,8 @@ renderDay(dateStr);
 }
 
 }
+
+renderToday();
 
 }
 
