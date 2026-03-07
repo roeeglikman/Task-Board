@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>לוח משימות</title>
 
 <style>
@@ -37,9 +36,12 @@ cursor:pointer;
 
 .calendar{
 display:grid;
-grid-template-columns:repeat(7,1fr);
 gap:8px;
 }
+
+.month{grid-template-columns:repeat(7,1fr);}
+.week{grid-template-columns:repeat(7,1fr);}
+.dayView{grid-template-columns:1fr;}
 
 .day{
 background:white;
@@ -62,12 +64,24 @@ padding:4px;
 margin-top:4px;
 border-radius:5px;
 font-size:12px;
-cursor:pointer;
+cursor:grab;
 }
 
 .done{
 text-decoration:line-through;
 opacity:0.5;
+}
+
+.todayBox{
+position:fixed;
+top:10px;
+right:10px;
+background:white;
+padding:10px;
+border-radius:10px;
+width:200px;
+box-shadow:0 2px 8px rgba(0,0,0,0.2);
+font-size:12px;
 }
 
 .modal{
@@ -112,20 +126,7 @@ background:#eee;
 color:black;
 }
 
-.todayBox{
-position:fixed;
-top:10px;
-right:10px;
-background:white;
-padding:10px;
-border-radius:10px;
-width:200px;
-box-shadow:0 2px 8px rgba(0,0,0,0.2);
-font-size:12px;
-}
-
 </style>
-
 </head>
 
 <body>
@@ -136,6 +137,10 @@ font-size:12px;
 
 <button onclick="prev()">⬅</button>
 <button onclick="next()">➡</button>
+
+<button onclick="setView('month')">חודש</button>
+<button onclick="setView('week')">שבוע</button>
+<button onclick="setView('day')">יום</button>
 
 <button onclick="openModal()">➕ משימה</button>
 
@@ -198,6 +203,7 @@ font-size:12px;
 let tasks=JSON.parse(localStorage.getItem("tasks"))||[];
 
 let current=new Date();
+let view="month";
 let selectedDate=null;
 let editIndex=null;
 let menuIndex=null;
@@ -225,6 +231,25 @@ end.add(new Option(t,t));
 }
 }
 
+}
+
+function setView(v){
+view=v;
+render();
+}
+
+function prev(){
+if(view==="month")current.setMonth(current.getMonth()-1);
+if(view==="week")current.setDate(current.getDate()-7);
+if(view==="day")current.setDate(current.getDate()-1);
+render();
+}
+
+function next(){
+if(view==="month")current.setMonth(current.getMonth()+1);
+if(view==="week")current.setDate(current.getDate()+7);
+if(view==="day")current.setDate(current.getDate()+1);
+render();
 }
 
 function openModal(date=null,index=null){
@@ -293,12 +318,6 @@ menu.style.top=e.pageY+"px";
 
 }
 
-function hideMenu(){
-taskMenu.style.display="none";
-}
-
-document.addEventListener("click",hideMenu);
-
 function deleteTask(){
 
 tasks.splice(menuIndex,1);
@@ -330,6 +349,17 @@ let cal=document.getElementById("calendar");
 let day=document.createElement("div");
 day.className="day";
 
+day.dataset.date=dateStr;
+
+day.ondragover=(e)=>e.preventDefault();
+
+day.ondrop=(e)=>{
+let id=e.dataTransfer.getData("task");
+tasks[id].date=dateStr;
+save();
+render();
+};
+
 day.onclick=()=>openModal(dateStr);
 
 let d=new Date(dateStr);
@@ -347,6 +377,12 @@ if(task.date!==dateStr)return;
 let t=document.createElement("div");
 t.className="task";
 t.style.background=task.color;
+
+t.draggable=true;
+
+t.ondragstart=(e)=>{
+e.dataTransfer.setData("task",i);
+};
 
 let checkbox=document.createElement("input");
 checkbox.type="checkbox";
@@ -402,6 +438,7 @@ todayTasks.appendChild(div);
 function render(){
 
 calendar.innerHTML="";
+calendar.className="calendar "+view;
 
 let y=current.getFullYear();
 let m=current.getMonth();
