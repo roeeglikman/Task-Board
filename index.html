@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>לוח  </title>
+<title>לוח משימות</title>
 
 <style>
 
@@ -381,6 +381,7 @@ renderDay(current,null);
 }
 
 renderToday();
+enableDrag();
 
 }
 
@@ -390,19 +391,11 @@ let dateStr=formatDate(date);
 
 let box=document.createElement("div");
 box.className="dayBox";
+box.dataset.date=dateStr;
 
 if(today && dateStr===today)box.classList.add("todayHighlight");
 
 box.onclick=()=>openModal(dateStr);
-
-box.ondragover=e=>e.preventDefault();
-
-box.ondrop=e=>{
-let id=e.dataTransfer.getData("task");
-tasks[id].date=dateStr;
-save();
-render();
-};
 
 let header=document.createElement("div");
 header.className="date";
@@ -415,16 +408,11 @@ tasks.forEach((t,i)=>{
 if(t.date!==dateStr)return;
 
 let task=document.createElement("div");
+task.dataset.index=i;
 
 task.className="task "+(t.priority==="high"?"priorityHigh":t.priority==="med"?"priorityMed":"priorityLow");
 
 task.style.background=t.color;
-
-task.draggable=true;
-
-task.ondragstart=e=>{
-e.dataTransfer.setData("task",i);
-};
 
 task.innerText=t.start+" "+t.text;
 
@@ -475,7 +463,41 @@ render();
 
 </script>
 
-  <!-- Firebase Sync -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+<script>
+
+function enableDrag(){
+
+document.querySelectorAll(".dayBox").forEach(box=>{
+
+new Sortable(box,{
+group:"tasks",
+animation:150,
+draggable:".task",
+
+onAdd:function(evt){
+
+let taskIndex=evt.item.dataset.index;
+let newDate=evt.to.dataset.date;
+
+tasks[taskIndex].date=newDate;
+
+save();
+render();
+
+}
+
+});
+
+});
+
+}
+
+</script>
+
+<!-- Firebase -->
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
@@ -513,8 +535,6 @@ render();
 
 async function syncTasksToCloud(){
 
-try{
-
 const snapshot = await db.collection("tasks").get();
 
 const batch = db.batch();
@@ -529,10 +549,6 @@ for(const t of tasks){
 await db.collection("tasks").add(t);
 }
 
-}catch(e){
-console.log("Firebase sync error",e);
-}
-
 }
 
 const originalSave = save;
@@ -540,82 +556,11 @@ const originalSave = save;
 save = function(){
 
 originalSave();
-
 syncTasksToCloud();
 
 };
 
-loadTasksFromCloud();
-
 </script>
 
-  <script>
-
-let touchTaskIndex=null;
-
-document.addEventListener("touchstart",function(e){
-
-let task=e.target.closest(".task");
-if(!task) return;
-
-touchTaskIndex=[...document.querySelectorAll(".task")].indexOf(task);
-
-});
-
-document.addEventListener("touchmove",function(e){
-
-let touch=e.touches[0];
-let el=document.elementFromPoint(touch.clientX,touch.clientY);
-
-if(!el) return;
-
-let dayBox=el.closest(".dayBox");
-
-if(dayBox && touchTaskIndex!==null){
-
-dayBox.style.background="#e8f5e9";
-
-}
-
-});
-
-document.addEventListener("touchend",function(e){
-
-let touch=e.changedTouches[0];
-let el=document.elementFromPoint(touch.clientX,touch.clientY);
-
-if(!el) return;
-
-let dayBox=el.closest(".dayBox");
-
-if(dayBox && touchTaskIndex!==null){
-
-let date=dayBox.querySelector(".date").innerText;
-
-let dayIndex=[...document.querySelectorAll(".dayBox")].indexOf(dayBox);
-
-let targetDate=formatDate(new Date(
-current.getFullYear(),
-current.getMonth(),
-dayIndex+1
-));
-
-tasks[touchTaskIndex].date=targetDate;
-
-save();
-render();
-
-}
-
-touchTaskIndex=null;
-
-});
-
-</script>
 </body>
 </html>
-
-
-
-
-
