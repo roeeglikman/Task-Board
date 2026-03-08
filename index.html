@@ -495,13 +495,7 @@ firebase.initializeApp(firebaseConfig);
 
 const db = firebase.firestore();
 
-async function loadTasksFromCloud(){
-
-try{
-
-const snapshot = await db.collection("tasks").get();
-
-if(snapshot.empty) return;
+db.collection("tasks").onSnapshot((snapshot)=>{
 
 let cloudTasks=[];
 
@@ -509,21 +503,13 @@ snapshot.forEach(doc=>{
 cloudTasks.push(doc.data());
 });
 
-if(cloudTasks.length){
-
 tasks = cloudTasks;
 
 localStorage.setItem("tasks", JSON.stringify(tasks));
 
 render();
 
-}
-
-}catch(e){
-console.log("Firebase load error",e);
-}
-
-}
+});
 
 async function syncTasksToCloud(){
 
@@ -628,6 +614,7 @@ touchTaskIndex=null;
 </script>
 </body>
 </html>
+
 
 
 
