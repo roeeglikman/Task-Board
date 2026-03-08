@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>לוח משימות</title>
+<title>לוח </title>
 
 <style>
 
@@ -73,61 +72,6 @@ cursor:grab;
 .priorityMed{border-right:4px solid orange}
 .priorityLow{border-right:4px solid green}
 
-.taskMenu{
-position:absolute;
-background:white;
-border-radius:8px;
-box-shadow:0 2px 10px rgba(0,0,0,0.2);
-padding:8px;
-display:none;
-flex-direction:column;
-width:130px;
-}
-
-.menuHeader{
-display:flex;
-justify-content:space-between;
-margin-bottom:4px;
-}
-
-.modal{
-position:fixed;
-top:0;
-left:0;
-right:0;
-bottom:0;
-background:rgba(0,0,0,0.4);
-display:none;
-align-items:center;
-justify-content:center;
-}
-
-.modalBox{
-background:white;
-padding:15px;
-border-radius:10px;
-width:260px;
-}
-
-.modalBox input,
-.modalBox select{
-width:100%;
-margin-bottom:6px;
-padding:5px;
-}
-
-.today{
-position:fixed;
-top:10px;
-right:10px;
-background:white;
-padding:10px;
-border-radius:10px;
-width:200px;
-box-shadow:0 2px 8px rgba(0,0,0,0.2);
-font-size:12px;
-}
-
 </style>
 </head>
 
@@ -150,166 +94,68 @@ font-size:12px;
 
 <div id="calendar" class="calendar"></div>
 
-<div class="today">
-<b>משימות להיום</b>
-<div id="todayTasks"></div>
-</div>
+<script type="module">
 
-<div id="taskMenu" class="taskMenu">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, getDocs, addDoc }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-<div class="menuHeader">
-פעולות
-<span onclick="hideMenu()">✖</span>
-</div>
+const firebaseConfig = {
+apiKey: "AIzaSyBzphmi-yaM3UmxWbJLxVNTMBQgcWJFv_U",
+authDomain: "task-board-e7ff1.firebaseapp.com",
+projectId: "task-board-e7ff1",
+storageBucket: "task-board-e7ff1.firebasestorage.app",
+messagingSenderId: "419157316500",
+appId: "1:419157316500:web:470bee840a02b3849df581",
+measurementId: "G-1PP4QEJY99"
+};
 
-<button onclick="editTask()">ערוך</button>
-<button onclick="duplicateTask()">שכפל</button>
-<button onclick="deleteTask()">מחק</button>
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-</div>
-
-<div class="modal" id="modal">
-
-<div class="modalBox">
-
-<input id="text" placeholder="משימה">
-
-<label>שעת התחלה</label>
-<select id="start"></select>
-
-<label>שעת סיום</label>
-<select id="end"></select>
-
-<label>עדיפות</label>
-<select id="priority">
-<option value="high">גבוהה</option>
-<option value="med">בינונית</option>
-<option value="low">נמוכה</option>
-</select>
-
-<label>צבע</label>
-<select id="color">
-<option value="#FFCDD2">אדום</option>
-<option value="#FFE0B2">כתום</option>
-<option value="#FFF9C4">צהוב</option>
-<option value="#C8E6C9">ירוק</option>
-<option value="#B3E5FC">תכלת</option>
-<option value="#D1C4E9">סגול</option>
-<option value="#F8BBD0">ורוד</option>
-<option value="#E0E0E0">אפור</option>
-</select>
-
-<button onclick="saveTask()">שמור</button>
-
-</div>
-</div>
-
-<script>
-
-let tasks=JSON.parse(localStorage.getItem("tasks"))||[];
-
+let tasks=[];
 let current=new Date();
 let view="month";
-let selectedDate=null;
-let editIndex=null;
-let menuIndex=null;
 
-const days=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
-const months=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+async function loadTasks(){
 
-function save(){
-localStorage.setItem("tasks",JSON.stringify(tasks));
+tasks=[];
+
+const snapshot=await getDocs(collection(db,"tasks"));
+
+snapshot.forEach(doc=>{
+tasks.push(doc.data());
+});
+
+render();
+
+}
+
+async function saveTaskToCloud(task){
+await addDoc(collection(db,"tasks"),task);
 }
 
 function formatDate(d){
-return d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0")+"-"+d.getDate().toString().padStart(2,"0");
+return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
 }
 
-function createTimes(){
-for(let h=0;h<24;h++){
-for(let m=0;m<60;m+=30){
-let t=(h+"").padStart(2,"0")+":"+(m+"").padStart(2,"0");
-start.add(new Option(t,t));
-end.add(new Option(t,t));
-}}
-}
+function openModal(){
 
-function openModal(date=null,index=null){
+let text=prompt("שם משימה");
 
-selectedDate=date || formatDate(new Date());
-editIndex=index;
-
-modal.style.display="flex";
-
-if(index!==null){
-
-let t=tasks[index];
-
-text.value=t.text;
-start.value=t.start;
-end.value=t.end;
-priority.value=t.priority;
-color.value=t.color;
-
-}
-
-}
-
-function saveTask(){
+if(!text) return;
 
 let task={
-text:text.value,
-start:start.value,
-end:end.value,
-priority:priority.value,
-color:color.value,
-date:selectedDate
+text:text,
+date:formatDate(new Date())
 };
 
-if(editIndex!==null){
-tasks[editIndex]=task;
-}else{
 tasks.push(task);
-}
 
-save();
-modal.style.display="none";
-editIndex=null;
+saveTaskToCloud(task);
+
 render();
 
-}
-
-function showMenu(e,i){
-
-menuIndex=i;
-
-taskMenu.style.display="flex";
-taskMenu.style.left=e.pageX+"px";
-taskMenu.style.top=e.pageY+"px";
-
-}
-
-function hideMenu(){
-taskMenu.style.display="none";
-}
-
-function deleteTask(){
-tasks.splice(menuIndex,1);
-save();
-hideMenu();
-render();
-}
-
-function duplicateTask(){
-tasks.push({...tasks[menuIndex]});
-save();
-hideMenu();
-render();
-}
-
-function editTask(){
-openModal(tasks[menuIndex].date,menuIndex);
-hideMenu();
 }
 
 function setView(v){
@@ -318,16 +164,12 @@ render();
 }
 
 function prev(){
-if(view==="month")current.setMonth(current.getMonth()-1);
-if(view==="week")current.setDate(current.getDate()-7);
-if(view==="day")current.setDate(current.getDate()-1);
+current.setMonth(current.getMonth()-1);
 render();
 }
 
 function next(){
-if(view==="month")current.setMonth(current.getMonth()+1);
-if(view==="week")current.setDate(current.getDate()+7);
-if(view==="day")current.setDate(current.getDate()+1);
+current.setMonth(current.getMonth()+1);
 render();
 }
 
@@ -335,105 +177,34 @@ function render(){
 
 calendar.innerHTML="";
 
-let today=formatDate(new Date());
-
-if(view==="month"){
-
-calendar.className="calendar month";
-
 let y=current.getFullYear();
 let m=current.getMonth();
 
-title.innerText="לוח משימות — "+months[m];
+let days=new Date(y,m+1,0).getDate();
 
-let first=new Date(y,m,1).getDay();
-let daysInMonth=new Date(y,m+1,0).getDate();
+for(let d=1;d<=days;d++){
 
-for(let i=0;i<first;i++)calendar.appendChild(document.createElement("div"));
-
-for(let d=1;d<=daysInMonth;d++){
-renderDay(new Date(y,m,d),today);
-}
-
-}
-
-if(view==="week"){
-
-calendar.className="calendar week";
-
-let start=new Date(current);
-start.setDate(current.getDate()-current.getDay());
-
-for(let i=0;i<7;i++){
-let d=new Date(start);
-d.setDate(start.getDate()+i);
-renderDay(d,today);
-}
-
-}
-
-if(view==="day"){
-
-calendar.className="calendar day";
-
-renderDay(current,null);
-
-}
-
-renderToday();
-
-}
-
-function renderDay(date,today){
-
-let dateStr=formatDate(date);
+let date=formatDate(new Date(y,m,d));
 
 let box=document.createElement("div");
 box.className="dayBox";
 
-if(today && dateStr===today)box.classList.add("todayHighlight");
-
-box.onclick=()=>openModal(dateStr);
-
-box.ondragover=e=>e.preventDefault();
-
-box.ondrop=e=>{
-let id=e.dataTransfer.getData("task");
-tasks[id].date=dateStr;
-save();
-render();
-};
-
 let header=document.createElement("div");
-header.className="date";
-header.innerText=days[date.getDay()]+" "+date.getDate();
+header.innerText=d;
 
 box.appendChild(header);
 
-tasks.forEach((t,i)=>{
+tasks.forEach(t=>{
 
-if(t.date!==dateStr)return;
+if(t.date===date){
 
-let task=document.createElement("div");
+let el=document.createElement("div");
+el.className="task";
+el.innerText=t.text;
 
-task.className="task "+(t.priority==="high"?"priorityHigh":t.priority==="med"?"priorityMed":"priorityLow");
+box.appendChild(el);
 
-task.style.background=t.color;
-
-task.draggable=true;
-
-task.ondragstart=e=>{
-e.dataTransfer.setData("task",i);
-};
-
-task.innerText=t.start+" "+t.text;
-
-task.onclick=e=>{
-e.stopPropagation();
-showMenu(e,i);
-};
-
-box.appendChild(task);
+}
 
 });
 
@@ -441,37 +212,9 @@ calendar.appendChild(box);
 
 }
 
-function renderToday(){
-
-let today=formatDate(new Date());
-
-todayTasks.innerHTML="";
-
-tasks.forEach(t=>{
-if(t.date===today){
-
-let d=document.createElement("div");
-d.innerText=t.start+" "+t.text;
-
-todayTasks.appendChild(d);
-
-}
-});
-
 }
 
-document.addEventListener("click",function(e){
-
-if(!e.target.closest(".taskMenu"))hideMenu();
-
-if(e.target.classList.contains("modal")){
-modal.style.display="none";
-}
-
-});
-
-createTimes();
-render();
+loadTasks();
 
 </script>
 
