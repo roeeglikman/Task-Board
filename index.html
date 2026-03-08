@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>לוח </title>
+
+<title>לוח משימות</title>
 
 <style>
 
@@ -15,7 +16,7 @@ margin:0;
 padding:15px;
 }
 
-h1{text-align:center}
+h1{text-align:center;margin-bottom:10px}
 
 .controls{
 display:flex;
@@ -115,6 +116,18 @@ margin-bottom:6px;
 padding:5px;
 }
 
+.today{
+position:fixed;
+top:10px;
+right:10px;
+background:white;
+padding:10px;
+border-radius:10px;
+width:200px;
+box-shadow:0 2px 8px rgba(0,0,0,0.2);
+font-size:12px;
+}
+
 </style>
 </head>
 
@@ -136,6 +149,11 @@ padding:5px;
 </div>
 
 <div id="calendar" class="calendar"></div>
+
+<div class="today">
+<b>משימות להיום</b>
+<div id="todayTasks"></div>
+</div>
 
 <div id="taskMenu" class="taskMenu">
 
@@ -186,51 +204,25 @@ padding:5px;
 </div>
 </div>
 
-<script type="module">
+<script>
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, updateDoc }
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+let tasks=JSON.parse(localStorage.getItem("tasks"))||[];
 
-const firebaseConfig = {
-apiKey: "AIzaSyBzphmi-yaM3UmxWbJLxVNTMBQgcWJFv_U",
-authDomain: "task-board-e7ff1.firebaseapp.com",
-projectId: "task-board-e7ff1",
-storageBucket: "task-board-e7ff1.firebasestorage.app",
-messagingSenderId: "419157316500",
-appId: "1:419157316500:web:470bee840a02b3849df581",
-measurementId: "G-1PP4QEJY99"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-let tasks=[];
 let current=new Date();
 let view="month";
 let selectedDate=null;
-let editId=null;
-let menuId=null;
+let editIndex=null;
+let menuIndex=null;
 
 const days=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
 const months=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
 
-function formatDate(d){
-return d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0")+"-"+d.getDate().toString().padStart(2,"0");
+function save(){
+localStorage.setItem("tasks",JSON.stringify(tasks));
 }
 
-async function loadTasks(){
-
-tasks=[];
-
-const snapshot=await getDocs(collection(db,"tasks"));
-
-snapshot.forEach(doc=>{
-tasks.push({...doc.data(),id:doc.id});
-});
-
-render();
-
+function formatDate(d){
+return d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0")+"-"+d.getDate().toString().padStart(2,"0");
 }
 
 function createTimes(){
@@ -242,25 +234,28 @@ end.add(new Option(t,t));
 }}
 }
 
-function openModal(date=null,id=null){
+function openModal(date=null,index=null){
 
 selectedDate=date || formatDate(new Date());
-editId=id;
+editIndex=index;
 
 modal.style.display="flex";
 
-if(id){
-let t=tasks.find(t=>t.id===id);
+if(index!==null){
+
+let t=tasks[index];
+
 text.value=t.text;
 start.value=t.start;
 end.value=t.end;
 priority.value=t.priority;
 color.value=t.color;
-}
 
 }
 
-async function saveTask(){
+}
+
+function saveTask(){
 
 let task={
 text:text.value,
@@ -271,26 +266,22 @@ color:color.value,
 date:selectedDate
 };
 
-if(editId){
-
-await updateDoc(doc(db,"tasks",editId),task);
-
+if(editIndex!==null){
+tasks[editIndex]=task;
 }else{
-
-await addDoc(collection(db,"tasks"),task);
-
+tasks.push(task);
 }
 
+save();
 modal.style.display="none";
-editId=null;
-
-loadTasks();
+editIndex=null;
+render();
 
 }
 
-function showMenu(e,id){
+function showMenu(e,i){
 
-menuId=id;
+menuIndex=i;
 
 taskMenu.style.display="flex";
 taskMenu.style.left=e.pageX+"px";
@@ -302,34 +293,23 @@ function hideMenu(){
 taskMenu.style.display="none";
 }
 
-async function deleteTask(){
-
-await deleteDoc(doc(db,"tasks",menuId));
-
+function deleteTask(){
+tasks.splice(menuIndex,1);
+save();
 hideMenu();
-loadTasks();
-
+render();
 }
 
-async function duplicateTask(){
-
-let t=tasks.find(t=>t.id===menuId);
-
-delete t.id;
-
-await addDoc(collection(db,"tasks"),t);
-
+function duplicateTask(){
+tasks.push({...tasks[menuIndex]});
+save();
 hideMenu();
-loadTasks();
-
+render();
 }
 
 function editTask(){
-
-openModal(tasks.find(t=>t.id===menuId).date,menuId);
-
+openModal(tasks[menuIndex].date,menuIndex);
 hideMenu();
-
 }
 
 function setView(v){
@@ -400,6 +380,8 @@ renderDay(current,null);
 
 }
 
+renderToday();
+
 }
 
 function renderDay(date,today){
@@ -415,13 +397,20 @@ box.onclick=()=>openModal(dateStr);
 
 box.ondragover=e=>e.preventDefault();
 
+box.ondrop=e=>{
+let id=e.dataTransfer.getData("task");
+tasks[id].date=dateStr;
+save();
+render();
+};
+
 let header=document.createElement("div");
 header.className="date";
 header.innerText=days[date.getDay()]+" "+date.getDate();
 
 box.appendChild(header);
 
-tasks.forEach(t=>{
+tasks.forEach((t,i)=>{
 
 if(t.date!==dateStr)return;
 
@@ -431,11 +420,17 @@ task.className="task "+(t.priority==="high"?"priorityHigh":t.priority==="med"?"p
 
 task.style.background=t.color;
 
+task.draggable=true;
+
+task.ondragstart=e=>{
+e.dataTransfer.setData("task",i);
+};
+
 task.innerText=t.start+" "+t.text;
 
 task.onclick=e=>{
 e.stopPropagation();
-showMenu(e,t.id);
+showMenu(e,i);
 };
 
 box.appendChild(task);
@@ -446,11 +441,39 @@ calendar.appendChild(box);
 
 }
 
+function renderToday(){
+
+let today=formatDate(new Date());
+
+todayTasks.innerHTML="";
+
+tasks.forEach(t=>{
+if(t.date===today){
+
+let d=document.createElement("div");
+d.innerText=t.start+" "+t.text;
+
+todayTasks.appendChild(d);
+
+}
+});
+
+}
+
+document.addEventListener("click",function(e){
+
+if(!e.target.closest(".taskMenu"))hideMenu();
+
+if(e.target.classList.contains("modal")){
+modal.style.display="none";
+}
+
+});
+
 createTimes();
-loadTasks();
+render();
 
 </script>
 
 </body>
 </html>
-
