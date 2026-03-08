@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>לוח משימות</title>
+<title>לוח </title>
 
 <style>
 
@@ -502,5 +502,50 @@ render();
 
 </script>
 
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+
+const firebaseConfig = {
+apiKey: "AIzaSyBzphmi-yaM3UmxWbJLxVNTMBQgcWJFv_U",
+authDomain: "task-board-e7ff1.firebaseapp.com",
+projectId: "task-board-e7ff1",
+storageBucket: "task-board-e7ff1.firebasestorage.app",
+messagingSenderId: "419157316500",
+appId: "1:419157316500:web:470bee840a02b3849df581",
+measurementId: "G-1PP4QEJY99"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.firestore();
+
+db.collection("tasks").onSnapshot(snapshot=>{
+
+tasks=[];
+
+snapshot.forEach(doc=>{
+tasks.push(doc.data());
+});
+
+render();
+
+});
+
+const originalSave = save;
+
+save = function(){
+
+originalSave();
+
+tasks.forEach(t=>{
+db.collection("tasks").doc(t.id).set(t);
+});
+
+};
+
+</script>
 </body>
 </html>
+
