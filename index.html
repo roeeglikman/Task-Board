@@ -62,9 +62,12 @@ padding:4px;
 margin-top:4px;
 border-radius:5px;
 font-size:12px;
-background:#bbdefb;
 cursor:grab;
 }
+
+.priorityHigh{border-right:4px solid red}
+.priorityMedium{border-right:4px solid orange}
+.priorityLow{border-right:4px solid green}
 
 .menu{
 position:absolute;
@@ -74,6 +77,13 @@ box-shadow:0 2px 10px rgba(0,0,0,0.2);
 display:none;
 flex-direction:column;
 padding:6px;
+width:130px;
+}
+
+.menuHeader{
+display:flex;
+justify-content:space-between;
+margin-bottom:4px;
 }
 
 .modal{
@@ -95,7 +105,8 @@ border-radius:10px;
 width:260px;
 }
 
-.modalBox input{
+.modalBox input,
+.modalBox select{
 width:100%;
 padding:5px;
 margin-bottom:8px;
@@ -122,9 +133,16 @@ margin-bottom:8px;
 <div id="calendar" class="calendar"></div>
 
 <div id="menu" class="menu">
+
+<div class="menuHeader">
+פעולות
+<span onclick="menu.style.display='none'" style="cursor:pointer">✖</span>
+</div>
+
 <button onclick="editTask()">ערוך</button>
 <button onclick="duplicateTask()">שכפל</button>
 <button onclick="deleteTask()">מחק</button>
+
 </div>
 
 <div class="modal" id="modal">
@@ -132,6 +150,25 @@ margin-bottom:8px;
 <div class="modalBox">
 
 <input id="taskText" placeholder="משימה">
+
+<label>עדיפות</label>
+<select id="priority">
+<option value="high">גבוהה</option>
+<option value="medium">בינונית</option>
+<option value="low">נמוכה</option>
+</select>
+
+<label>צבע</label>
+<select id="color">
+<option value="#bbdefb">כחול</option>
+<option value="#ffcdd2">אדום</option>
+<option value="#c8e6c9">ירוק</option>
+<option value="#fff9c4">צהוב</option>
+<option value="#d1c4e9">סגול</option>
+<option value="#ffe0b2">כתום</option>
+<option value="#f8bbd0">ורוד</option>
+<option value="#e0e0e0">אפור</option>
+</select>
 
 <button onclick="saveTask()">שמור</button>
 <button onclick="closeModal()">❌</button>
@@ -190,7 +227,9 @@ function saveTask(){
 let t={
 id:uid(),
 text:taskText.value,
-date:selectedDate
+date:selectedDate,
+priority:priority.value,
+color:color.value
 }
 
 db.collection("tasks").doc(t.id).set(t)
@@ -233,9 +272,18 @@ tasks.forEach(t=>{
 if(t.date!==dateStr) return
 
 let el=document.createElement("div")
+
 el.className="task"
 el.innerText=t.text
 el.dataset.id=t.id
+
+el.style.background=t.color || "#bbdefb"
+
+el.classList.add(
+t.priority==="high"?"priorityHigh":
+t.priority==="medium"?"priorityMedium":
+"priorityLow"
+)
 
 el.onclick=e=>{
 e.stopPropagation()
@@ -301,7 +349,9 @@ let t=tasks.find(t=>t.id===selectedId)
 
 db.collection("tasks").doc(uid()).set({
 text:t.text,
-date:t.date
+date:t.date,
+priority:t.priority,
+color:t.color
 })
 
 menu.style.display="none"
@@ -313,6 +363,8 @@ function editTask(){
 let t=tasks.find(t=>t.id===selectedId)
 
 taskText.value=t.text
+priority.value=t.priority
+color.value=t.color
 selectedDate=t.date
 
 modal.style.display="flex"
@@ -360,5 +412,3 @@ render()
 
 </body>
 </html>
-
-
