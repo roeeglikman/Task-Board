@@ -342,11 +342,15 @@ render()
 
 }
 
-db.collection("tasks").onSnapshot(s=>{
+db.collection("tasks").onSnapshot(snapshot=>{
 
 tasks=[]
 
-s.forEach(doc=>tasks.push(doc.data()))
+snapshot.forEach(doc=>{
+let data=doc.data()
+data.id=doc.id
+tasks.push(data)
+})
 
 render()
 
@@ -356,3 +360,4 @@ render()
 
 </body>
 </html>
+
