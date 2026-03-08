@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>לוח </title>
+<title>לוח משימות </title>
 
 <style>
 
@@ -562,8 +562,72 @@ syncTasksToCloud();
 loadTasksFromCloud();
 
 </script>
-  
+
+  <script>
+
+let touchTaskIndex=null;
+
+document.addEventListener("touchstart",function(e){
+
+let task=e.target.closest(".task");
+if(!task) return;
+
+touchTaskIndex=[...document.querySelectorAll(".task")].indexOf(task);
+
+});
+
+document.addEventListener("touchmove",function(e){
+
+let touch=e.touches[0];
+let el=document.elementFromPoint(touch.clientX,touch.clientY);
+
+if(!el) return;
+
+let dayBox=el.closest(".dayBox");
+
+if(dayBox && touchTaskIndex!==null){
+
+dayBox.style.background="#e8f5e9";
+
+}
+
+});
+
+document.addEventListener("touchend",function(e){
+
+let touch=e.changedTouches[0];
+let el=document.elementFromPoint(touch.clientX,touch.clientY);
+
+if(!el) return;
+
+let dayBox=el.closest(".dayBox");
+
+if(dayBox && touchTaskIndex!==null){
+
+let date=dayBox.querySelector(".date").innerText;
+
+let dayIndex=[...document.querySelectorAll(".dayBox")].indexOf(dayBox);
+
+let targetDate=formatDate(new Date(
+current.getFullYear(),
+current.getMonth(),
+dayIndex+1
+));
+
+tasks[touchTaskIndex].date=targetDate;
+
+save();
+render();
+
+}
+
+touchTaskIndex=null;
+
+});
+
+</script>
 </body>
 </html>
+
 
 
