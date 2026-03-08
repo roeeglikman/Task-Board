@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>לוח משימות</title>
+<title>לוח </title>
 
 <style>
 
@@ -475,7 +475,9 @@ document.addEventListener("click",function(e){
 
 if(!e.target.closest(".taskMenu"))hideMenu();
 
-if(!e.target.closest(".modalBox"))modal.style.display="none";
+if(e.target.classList.contains("modal")){
+modal.style.display="none";
+}
 
 });
 
