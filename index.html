@@ -408,7 +408,6 @@ tasks.forEach((t,i)=>{
 if(t.date!==dateStr)return;
 
 let task=document.createElement("div");
-task.dataset.index=i;
 
 task.className="task "+(t.priority==="high"?"priorityHigh":t.priority==="med"?"priorityMed":"priorityLow");
 
@@ -476,12 +475,19 @@ group:"tasks",
 animation:150,
 draggable:".task",
 
-onAdd:function(evt){
+onEnd:function(evt){
 
-let taskIndex=evt.item.dataset.index;
+let taskText=evt.item.innerText;
+
+let movedTask=tasks.find(t=>{
+return (t.start+" "+t.text)===taskText;
+});
+
+if(!movedTask) return;
+
 let newDate=evt.to.dataset.date;
 
-tasks[taskIndex].date=newDate;
+movedTask.date=newDate;
 
 save();
 render();
@@ -493,72 +499,6 @@ render();
 });
 
 }
-
-</script>
-
-<!-- Firebase -->
-
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
-<script>
-
-const firebaseConfig = {
-apiKey: "AIzaSyBzphmi-yaM3UmxWbJLxVNTMBQgcWJFv_U",
-authDomain: "task-board-e7ff1.firebaseapp.com",
-projectId: "task-board-e7ff1",
-storageBucket: "task-board-e7ff1.firebasestorage.app",
-messagingSenderId: "419157316500",
-appId: "1:419157316500:web:470bee840a02b3849df581",
-measurementId: "G-1PP4QEJY99"
-};
-
-firebase.initializeApp(firebaseConfig);
-
-const db = firebase.firestore();
-
-db.collection("tasks").onSnapshot((snapshot)=>{
-
-let cloudTasks=[];
-
-snapshot.forEach(doc=>{
-cloudTasks.push(doc.data());
-});
-
-tasks = cloudTasks;
-
-localStorage.setItem("tasks", JSON.stringify(tasks));
-
-render();
-
-});
-
-async function syncTasksToCloud(){
-
-const snapshot = await db.collection("tasks").get();
-
-const batch = db.batch();
-
-snapshot.forEach(doc=>{
-batch.delete(doc.ref);
-});
-
-await batch.commit();
-
-for(const t of tasks){
-await db.collection("tasks").add(t);
-}
-
-}
-
-const originalSave = save;
-
-save = function(){
-
-originalSave();
-syncTasksToCloud();
-
-};
 
 </script>
 
